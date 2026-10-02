@@ -56,6 +56,11 @@ jobs:
           mkdir -p ~/.android
           cp debug.keystore ~/.android/debug.keystore
 
+      - name: Stamp build number into the app
+        run: |
+          sed -i "s/const APP_BUILD=[0-9]*;/const APP_BUILD=${{ github.run_number }};/" www/index.html
+          grep -n "const APP_BUILD" www/index.html
+
       - name: Sync web files
         run: npx cap sync android
 
