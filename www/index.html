@@ -107,8 +107,10 @@ body.ro #t-players :is(button,input),body.ro #t-play :is(button,input),body.ro #
 @media (max-width:420px){.team{font-size:.9rem}.sk{padding:3px 7px}}
 .team.b .pn{flex-direction:row-reverse}
 .team.b .av{margin:0 0 0 6px}
-#avmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
-#avmodal[hidden]{display:none}
+#avmodal,#meavmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+#avmodal[hidden],#meavmodal[hidden]{display:none}
+.meavb{background:none;border:0;padding:0;border-radius:50%;flex:none}.meavb .av{margin:0;border-width:2px}
+.hdelta{font-weight:800;white-space:nowrap;text-align:right}.hdelta.up{color:#6ee7a0}.hdelta.dn{color:#ff8a8a}.hdelta small{display:block;color:var(--mute);font-weight:400}
 #cropmodal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
 #cropmodal[hidden]{display:none}
 #cropstage{display:block;width:100%;aspect-ratio:1;border-radius:12px;background:#000;touch-action:none;cursor:grab;margin:10px 0}
@@ -220,6 +222,7 @@ td.held{color:var(--mute)}
 </section>
 <section id="t-acct" class="tab" hidden>
 <div class="card" id="acctcard"></div>
+<div class="card" id="histcard" hidden></div>
 <div class="card" id="roomcard" hidden></div>
 </section>
 </main>
@@ -255,6 +258,15 @@ td.held{color:var(--mute)}
 <button class="big" id="aswap">Create an account</button>
 <button class="big" id="aback">← Back</button>
 </div>
+</div></div>
+<div id="meavmodal" hidden><div class="avbox">
+<div class="row" style="justify-content:space-between"><b>Your avatar</b><button id="medone" class="p">Done</button></div>
+<div id="meavprev" style="margin:12px 0;text-align:center"></div>
+<div class="egrid" id="megrid"></div>
+<div class="row"><button id="meshot">📸 Take photo</button><button id="meup">🖼 Choose photo</button><button id="meini">Initials</button></div>
+<div class="empty" style="margin-top:8px">Your avatar shows up for everyone in rooms you join.</div>
+<input type="file" id="mefile" accept="image/*" hidden>
+<input type="file" id="mecam" accept="image/*" capture="user" hidden>
 </div></div>
 <div id="avmodal" hidden><div class="avbox">
 <div class="row" style="justify-content:space-between"><div class="row"><span id="avprev"></span><b id="avname"></b></div><button id="avdone" class="p">Done</button></div>
@@ -307,9 +319,10 @@ const EMOJI=["🦊","🐼","🐯","🦁","🐸","🐵","🐙","🦄","🐧","�
 const hue=t=>{let h=0;for(const ch of t)h=(h*31+ch.charCodeAt(0))%360;return h};
 function av(x,size=28){
   const p=typeof x==="object"?x:S.players.find(q=>q.id===x);if(!p)return "";
+  const mm=p.mid&&RM?RM.members.find(m=>m.uid===p.mid):null,A=mm&&mm.av?mm.av:p.av;
   const st=`width:${size}px;height:${size}px;font-size:${Math.round(size*.42)}px`;
-  if(p.av&&p.av.t==="p")return `<span class="av" style="${st}"><img src="${esc(p.av.v)}" alt=""></span>`;
-  if(p.av&&p.av.t==="e")return `<span class="av em" style="${st};font-size:${Math.round(size*.6)}px">${p.av.v}</span>`;
+  if(A&&A.t==="p")return `<span class="av" style="${st}"><img src="${esc(A.v)}" alt=""></span>`;
+  if(A&&A.t==="e")return `<span class="av em" style="${st};font-size:${Math.round(size*.6)}px">${A.v}</span>`;
   const ini=p.name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
   return `<span class="av" style="${st};background:hsl(${hue(p.name)} 55% 38%)">${esc(ini)}</span>`;
 }
@@ -565,12 +578,12 @@ function cropDraw(){
   ctx.rect(0,0,c.W,c.W);ctx.arc(c.W/2,c.W/2,c.D/2,0,Math.PI*2,true);ctx.fill("evenodd");
   ctx.lineWidth=2;ctx.strokeStyle="#f5c542";ctx.beginPath();ctx.arc(c.W/2,c.W/2,c.D/2,0,Math.PI*2);ctx.stroke();
 }
-function openCrop(im){
+function openCrop(im,me){
   $("cropmodal").hidden=false;
   const cv=cropCanvas(),W=Math.round(cv.clientWidth)||280,dpr=Math.min(2,window.devicePixelRatio||1);
   cv.width=cv.height=Math.round(W*dpr);
   const D=Math.round(W*.86),min=D/Math.min(im.width,im.height);
-  CR={im,W,D,min,z:1,s:min,ox:0,oy:0,ptr:new Map(),pd:0};
+  CR={im,W,D,min,z:1,s:min,ox:0,oy:0,ptr:new Map(),pd:0,me:!!me};
   $("cropzoom").value=1;cropDraw();
 }
 function closeCrop(){$("cropmodal").hidden=true;CR=null}
@@ -595,14 +608,15 @@ function closeCrop(){$("cropmodal").hidden=true;CR=null}
   $("cropzoom").oninput=e=>{if(CR)cropSetZoom(parseFloat(e.target.value))};
   $("cropcancel").onclick=closeCrop;
   $("cropok").onclick=()=>{
-    const p=avP();if(!CR||!p){closeCrop();return}
+    const me=CR&&CR.me,p=me?ME:avP();if(!CR||!p){closeCrop();return}
     const c=CR,N=128,o=document.createElement("canvas");o.width=o.height=N;
     const x=o.getContext("2d"),k=N/c.D;
     x.fillStyle="#000";x.fillRect(0,0,N,N);
     x.setTransform(k,0,0,k,N/2,N/2);
     x.drawImage(c.im,c.ox-c.im.width*c.s/2,c.oy-c.im.height*c.s/2,c.im.width*c.s,c.im.height*c.s);
-    p.av={t:"p",v:o.toDataURL("image/jpeg",.85)};
-    closeCrop();save();renderAv();render();
+    const val={t:"p",v:o.toDataURL("image/jpeg",.8)};
+    if(me){ME.av=val;closeCrop();saveMyAvatar()}
+    else{p.av=val;closeCrop();save();renderAv();render()}
   };
 })();
 const photo=e=>{
@@ -630,17 +644,25 @@ function arm(id,label,fn){
     b.dataset.arm="1";b.textContent=label;b.classList.add("danger");t=setTimeout(off,4000);
   };
 }
-function resetRounds(){const R=ratings(true),G=RG;S.players.forEach(p=>{p.rt=Math.round(R[p.id]*100)/100;p.gm=G[p.id];p.played=0;p.sat=0});S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.ended=false;S.endRounds=0;save();render()}
+function resetRounds(){const R=ratings(true),G=RG;S.players.forEach(p=>{p.rt=Math.round(R[p.id]*100)/100;p.gm=G[p.id];p.played=0;p.sat=0});S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.ended=false;S.endRounds=0;S.results=null;S.sessionId=null;save();render()}
+const r2=v=>Math.round(v*100)/100;
+function buildResults(){
+  const st=stats(true).filter(x=>x.w+x.l>0),out={};
+  st.forEach((x,i)=>{if(!x.p.mid)return;out[x.p.mid]={w:x.w,l:x.l,from:r2(x.p.rt??3),to:r2(x.rt),games:RG[x.p.id]||0,rank:i+1,of:st.length}});
+  return out;
+}
 function endPlay(){
   if(!S.cur)return;
   S.hist.push(...S.cur.courts.filter(winner).map(c=>({A:c.A,B:c.B,sa:c.sa,sb:c.sb,win:winner(c)})));
   S.cur=null;S.ended=true;S.endRounds=S.round;
+  S.sessionId=S.sessionId||Date.now();S.results=buildResults();
   save();render();showTab("rank");
+  recordResult();
 }
 arm("endplay","Tap again to end open play",endPlay);
 arm("newplay","Tap again to start fresh",resetRounds);
 arm("reset","Tap again to reset",resetRounds);
-arm("clearall","Tap again to delete all",()=>{S.players=[];S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.uid=1;S.ended=false;save();render()});
+arm("clearall","Tap again to delete all",()=>{S.players=[];S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.uid=1;S.ended=false;S.results=null;S.sessionId=null;save();render()});
 const FBV="12.19.0";
 const FBC={apiKey:"AIzaSyAzL-UhrKLdfmJoTvwDQ6n3kQa2pVL_6OE",authDomain:"watapickle-matcher.firebaseapp.com",projectId:"watapickle-matcher",storageBucket:"watapickle-matcher.firebasestorage.app",messagingSenderId:"105232671906",appId:"1:105232671906:web:d7e4d0d66c89f6b55de3fb"};
 let FB=null,ME=null,authMode="login";
@@ -665,12 +687,12 @@ async function makeProfile(u,name){
     try{await f.fs.setDoc(f.fs.doc(f.db,"accounts",t),{uid:u.uid});no=t}
     catch(e){if(i===5||e.code!=="permission-denied")throw e}
   }
-  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now()});
-  ME={uid:u.uid,email:u.email,name,acct:no};
+  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now(),rating:3,games:0,hist:[]});
+  ME={uid:u.uid,email:u.email,name,acct:no,av:null,rating:3,games:0,hist:[]};
 }
 async function loadProfile(u){
   const f=FB,snap=await f.fs.getDoc(f.fs.doc(f.db,"users",u.uid));
-  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo};return}
+  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo,av:d.avatar||null,rating:typeof d.rating==="number"?d.rating:3,games:d.games||0,hist:Array.isArray(d.hist)?d.hist:[]};return}
   await makeProfile(u,u.displayName||(u.email||"Player").split("@")[0]);
 }
 function showPw(on){
@@ -758,18 +780,70 @@ async function restoreNet(){
   }catch(e){}
   renderAcct();
 }
+function sumHist(){let w=0,l=0;(ME&&ME.hist||[]).forEach(h=>{w+=h.w||0;l+=h.l||0});return [w,l]}
 function renderAcct(){
   renderRoom();
-  const c=$("acctcard");
+  const c=$("acctcard"),hc=$("histcard");
+  hc.hidden=!(S.net==="online"&&ME);
   if(S.net==="online"&&ME){
-    c.innerHTML=`<h2>Account</h2><div style="font-size:1.15rem;font-weight:800">${esc(ME.name)}</div><div class="empty">${esc(ME.email)}</div>
+    const rt=ME.rating,[W,L]=sumHist(),me={name:ME.name,av:ME.av};
+    c.innerHTML=`<h2>Account</h2>
+<div class="row" style="flex-wrap:nowrap;gap:12px"><button class="meavb" id="meav" aria-label="Change avatar">${av(me,76)}</button><div style="min-width:0"><div style="font-size:1.15rem;font-weight:800">${esc(ME.name)}</div><div class="empty" style="word-break:break-all">${esc(ME.email)}</div><div class="empty">Tap your avatar to change it</div></div></div>
 <div class="grow" style="margin-top:10px"><span>Account no.</span><b style="width:auto;font-size:1.05rem;letter-spacing:.05em">WP-${esc(ME.acct)}</b><button id="cpacct">Copy</button></div>
-<div class="row"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div>`;
+<h2 style="margin-top:14px">My rating</h2>
+<div class="row" style="gap:12px"><span style="font-size:2rem;font-weight:800">${rt.toFixed(2)}</span>${badge(rt)}<span class="empty">${level(rt)}</span></div>
+<div class="empty">${ME.games} rated game${ME.games===1?"":"s"}${ME.hist.length?" · "+W+"W–"+L+"L in your last "+ME.hist.length+" open play"+(ME.hist.length===1?"":"s"):""}</div>
+${ME.games===0?`<div class="row" style="margin-top:8px"><label for="merate">Starting level</label><input id="merate" type="number" inputmode="decimal" step="0.1" min="2" max="6" value="${rt.toFixed(1)}" style="flex:0 0 80px"></div><div class="empty">Set this before your first open play. After that your rating updates by itself.</div>`:""}
+<div class="row" style="margin-top:12px"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div>`;
+    const H=ME.hist;
+    hc.innerHTML="<h2>Open play history</h2>"+(H.length?H.map(h=>{
+      const d=r2((h.to||0)-(h.from||0)),dt=new Date(h.at).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+      return `<div class="mrow"><span><b>${esc(h.room||"Open play")}</b><small>${esc(dt)} · ${h.w}W–${h.l}L${h.rank?" · #"+h.rank+" of "+h.of:""}</small></span><span class="hdelta ${d>0?"up":d<0?"dn":""}">${d>0?"▲ +":d<0?"▼ ":"= "}${d===0?"0.00":d.toFixed(2)}<small>${(h.from||0).toFixed(2)} → ${(h.to||0).toFixed(2)}</small></span></div>`}).join("")
+      :'<div class="empty">No open plays yet. When a host adds you to the player list and ends the session, your result shows up here.</div>');
   }else if(S.net==="online"){
+    hc.hidden=true;
     c.innerHTML=`<h2>Account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button><button id="useoff">Use offline mode</button></div>`;
   }else{
+    hc.hidden=true;
     c.innerHTML=`<h2>Account</h2><div class="empty">Offline mode: no account needed. Everything stays on this phone.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Go online</button></div>`;
   }
+}
+function renderMeAv(){
+  if(!ME)return;
+  $("meavprev").innerHTML=av({name:ME.name,av:ME.av},84);
+  $("megrid").innerHTML=EMOJI.map(e=>`<button data-e="${e}" class="${ME.av&&ME.av.t==="e"&&ME.av.v===e?"on":""}">${e}</button>`).join("");
+}
+async function syncMember(){
+  if(!RM||!ME||!FB)return;
+  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"rooms",RM.id,"members",ME.uid),{rating:ME.rating,games:ME.games,av:ME.av||null})}catch(e){}
+}
+async function saveMyAvatar(){
+  renderMeAv();renderAcct();
+  if(!ME||!FB)return;
+  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),{avatar:ME.av||null})}catch(e){toast(fbErr(e))}
+  syncMember();
+}
+let recBusy=false;
+async function recordResult(){
+  if(recBusy||!ME||!FB||!RM||S.net!=="online"||!S.results||!S.sessionId)return;
+  const r=S.results[ME.uid];if(!r)return;
+  const id=RM.id+"-"+S.sessionId,room=RM.name;
+  const same=h=>h.id===id&&h.to===r.to&&h.w===r.w&&h.l===r.l;
+  if((ME.hist||[]).some(same))return;
+  recBusy=true;
+  try{
+    const ref=FB.fs.doc(FB.db,"users",ME.uid),snap=await FB.fs.getDoc(ref),d=snap.exists()?snap.data():{};
+    let hist=Array.isArray(d.hist)?d.hist.slice():[];
+    if(hist.some(same)){ME.hist=hist;ME.rating=typeof d.rating==="number"?d.rating:ME.rating;ME.games=d.games||ME.games;renderAcct();return}
+    const entry={id,at:S.sessionId,room,w:r.w,l:r.l,from:r.from,to:r.to,rank:r.rank,of:r.of},i=hist.findIndex(h=>h.id===id);
+    if(i>=0)hist[i]=entry;else hist.unshift(entry);
+    hist=hist.slice(0,50);
+    await FB.fs.updateDoc(ref,{rating:r.to,games:r.games,hist});
+    ME.rating=r.to;ME.games=r.games;ME.hist=hist;
+    syncMember();renderAcct();
+    toast("Saved to your account · rating "+r.to.toFixed(2));
+  }catch(e){}
+  recBusy=false;
 }
 const newState=()=>({players:[],mode:2,courts:2,round:0,cur:null,hist:[],partner:{},opp:{},uid:1,ended:false,endRounds:0});
 const genId=()=>{const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let t="";for(let i=0;i<6;i++)t+=c[Math.floor(Math.random()*c.length)];return t};
@@ -814,13 +888,13 @@ async function enterRoom(id){
   const d=snap.data();
   RM={id,host:d.hostUid===ME.uid,name:d.name,hostName:d.hostName,members:[],seen:false,unsubs:[]};
   LOCALS=S;applyState(d);
-  await f.fs.setDoc(f.fs.doc(f.db,"rooms",id,"members",ME.uid),{name:ME.name,acct:ME.acct,joinedAt:Date.now()});
+  await f.fs.setDoc(f.fs.doc(f.db,"rooms",id,"members",ME.uid),{name:ME.name,acct:ME.acct,joinedAt:Date.now(),rating:ME.rating??3,games:ME.games||0,av:ME.av||null});
   RM.unsubs.push(f.fs.onSnapshot(ref,s=>{
     if(!RM)return;
     const x=s.data();
     if(!s.exists()||x.closed){leaveRoom("The host closed the room.");return}
     RM.name=x.name;
-    if(!RM.host){applyState(x);render()}
+    if(!RM.host){applyState(x);render();recordResult()}
     updateBanner();renderRoom();
   },()=>{}));
   RM.unsubs.push(f.fs.onSnapshot(f.fs.collection(f.db,"rooms",id,"members"),qs=>{
@@ -828,12 +902,12 @@ async function enterRoom(id){
     RM.members=qs.docs.map(m=>Object.assign({uid:m.id},m.data())).sort((a,b)=>a.joinedAt-b.joinedAt);
     if(RM.members.some(m=>m.uid===ME.uid))RM.seen=true;
     else if(RM.seen&&!RM.host){leaveRoom("You were removed from the room.",true);return}
-    renderRoom();
+    renderRoom();render();
   },()=>{}));
   try{localStorage.setItem("wp-room",id)}catch(e){}
   document.body.classList.toggle("ro",!RM.host);
   lastPush=JSON.stringify(strip(S));
-  render();updateBanner();renderRoom();
+  render();updateBanner();renderRoom();recordResult();
 }
 async function leaveRoom(msg,skipDel){
   const r=RM;if(!r)return;
@@ -853,8 +927,8 @@ function renderRoom(){
   c.hidden=false;
   if(RM){
     const rows=RM.members.map(m=>{
-      const act=RM.host&&m.uid!==ME.uid?`<div class="row"><button data-addp="${esc(m.uid)}">+ Player</button><button class="sk" data-rm="${esc(m.uid)}">Remove</button></div>`:"";
-      return `<div class="mrow"><span><b>${esc(m.name)}</b>${m.uid===ME.uid?" (you)":""}<small>WP-${esc(m.acct||"")}</small></span>${act}</div>`;
+      const add=RM.host?`<button data-addp="${esc(m.uid)}">+ Player</button>`:"",rem=RM.host&&m.uid!==ME.uid?`<button class="sk" data-rm="${esc(m.uid)}">Remove</button>`:"",act=add||rem?`<div class="row">${add}${rem}</div>`:"";
+      return `<div class="mrow"><span style="display:flex;align-items:center;gap:8px">${av({name:m.name,av:m.av},32)}<span><b>${esc(m.name)}</b>${m.uid===ME.uid?" (you)":""}<small>WP-${esc(m.acct||"")}</small></span></span>${act}</div>`;
     }).join("");
     c.innerHTML=`<h2>Your room</h2><div style="font-size:1.1rem;font-weight:800">${esc(RM.name)}</div>
 <div class="grow"><span>Room ID</span><b style="width:auto;font-size:1.3rem;letter-spacing:.12em">${RM.id}</b><button id="cproom">Copy</button></div>
@@ -892,12 +966,13 @@ $("roomcard").onclick=async e=>{
     if(!m)return;
     if(S.players.some(p=>p.mid===m.uid)){toast(m.name+" is already a player.");return}
     const act=S.players.filter(p=>!p.hold),min=act.length?Math.min(...act.map(p=>p.played)):0;
-    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:3,mid:m.uid});
+    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:typeof m.rating==="number"?m.rating:3,gm:m.games||0,mid:m.uid});
     save();render();toast(m.name+" added to players.");
   }
 };
 $("acctcard").onclick=async e=>{
   const id=e.target.id;
+  if(e.target.closest("#meav")){renderMeAv();$("meavmodal").hidden=false;return}
   if(id==="signin")openStart("auth");
   else if(id==="useoff"){await leaveRoom();S.net="offline";save();renderAcct()}
   else if(id==="logout"){await leaveRoom();try{const f=await fbLoad();await f.au.signOut(f.auth)}catch(x){}ME=null;S.net="offline";save();renderAcct()}
@@ -907,6 +982,25 @@ $("acctcard").onclick=async e=>{
     e.target.textContent="Copied";setTimeout(()=>{e.target.textContent="Copy"},1500);
   }
 };
+$("acctcard").onchange=async e=>{
+  if(e.target.id!=="merate"||!ME||ME.games)return;
+  ME.rating=r2(clampR(parseFloat(e.target.value)));
+  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),{rating:ME.rating})}catch(x){toast(fbErr(x))}
+  syncMember();renderAcct();
+};
+const mePhoto=e=>{
+  const f=e.target.files[0];e.target.value="";if(!f||!ME)return;
+  const fr=new FileReader();
+  fr.onload=()=>{const im=new Image();im.onload=()=>openCrop(im,true);im.src=fr.result};
+  fr.readAsDataURL(f);
+};
+$("mefile").onchange=mePhoto;$("mecam").onchange=mePhoto;
+$("meshot").onclick=()=>$("mecam").click();
+$("meup").onclick=()=>$("mefile").click();
+$("meini").onclick=()=>{if(!ME)return;ME.av=null;saveMyAvatar()};
+$("megrid").onclick=e=>{const b=e.target.closest("[data-e]");if(!b||!ME)return;ME.av={t:"e",v:b.dataset.e};saveMyAvatar()};
+$("medone").onclick=()=>{$("meavmodal").hidden=true};
+$("meavmodal").onclick=e=>{if(e.target.id==="meavmodal")$("medone").onclick()};
 $("goOff").onclick=()=>{S.net="offline";save();$("start").hidden=true;renderAcct()};
 $("goOn").onclick=()=>openStart("auth");
 $("aswap").onclick=()=>setAuthMode(authMode==="signup"?"login":"signup");
