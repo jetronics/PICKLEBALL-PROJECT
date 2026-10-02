@@ -1,0 +1,6 @@
+{
+  "appId": "com.openplay.manager",
+  "appName": "Open Play",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}
