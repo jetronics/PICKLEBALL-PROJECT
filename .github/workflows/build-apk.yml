@@ -11,14 +11,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check required files
+        run: |
+          for f in www/index.html icon.png make_icons.py capacitor.config.json package.json debug.keystore; do
+            test -f "$f" || { echo "Missing file: $f"; exit 1; }
+          done
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
+          cache: gradle
 
       - name: Install Capacitor
         run: npm install
@@ -26,23 +34,44 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
+      - name: Make launcher icons
+        run: |
+          pip install pillow
+          python3 make_icons.py android/app/src/main/res
+
       - name: Allow camera (for avatar photos)
         run: |
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>#' "$M"
           grep -n "CAMERA" "$M"
 
+      - name: Set version number
+        run: |
+          G=android/app/build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$G"
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" "$G"
+          grep -n -E "versionCode|versionName" "$G"
+
+      - name: Use the fixed signing key
+        run: |
+          mkdir -p ~/.android
+          cp debug.keystore ~/.android/debug.keystore
+
       - name: Sync web files
         run: npx cap sync android
 
-      - name: Build debug APK
+      - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
 
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk WataPickle-build${{ github.run_number }}.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: open-play-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: watapickle-apk
+          path: WataPickle-build${{ github.run_number }}.apk
+          if-no-files-found: error
