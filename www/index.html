@@ -247,7 +247,8 @@ td.held{color:var(--mute)}
 <h2 id="atitle" style="font-size:1rem">Log in</h2>
 <input id="aname" placeholder="Display name" maxlength="24" hidden>
 <input id="aemail" type="email" placeholder="Email" autocomplete="email">
-<input id="apass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+<div class="row" style="flex-wrap:nowrap"><input id="apass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password"><button type="button" id="apeek" aria-label="Show password" title="Show password" style="flex:0 0 auto;min-width:48px;font-size:1.1rem">👁</button></div>
+<div class="row" id="aforgotrow" style="justify-content:flex-end"><button type="button" id="aforgot" style="border:0;background:none;color:var(--acc);padding:4px 2px;font-size:.9rem;text-decoration:underline">Forgot password?</button></div>
 <div class="empty" id="aerr" style="color:var(--warn)"></div>
 <button class="p big" id="asubmit">Log in</button>
 <button class="big" id="aswap">Create an account</button>
@@ -653,7 +654,7 @@ async function fbLoad(){
   return FB;
 }
 function fbErr(e){
-  const m={"net":"Can't reach the online service. Check your internet connection.","auth/network-request-failed":"No internet connection.","auth/email-already-in-use":"That email already has an account. Try logging in.","auth/invalid-email":"That email address doesn't look right.","auth/weak-password":"Password needs at least 6 characters.","auth/invalid-credential":"Wrong email or password.","auth/user-not-found":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/too-many-requests":"Too many tries. Wait a bit and try again.","permission-denied":"The database rules do not allow this yet. Publish the latest firestore.rules in Firebase.","room-missing":"Room not found. Check the ID and try again."};
+  const m={"net":"Can't reach the online service. Check your internet connection.","auth/network-request-failed":"No internet connection.","auth/email-already-in-use":"That email already has an account. Try logging in.","auth/invalid-email":"That email address doesn't look right.","auth/weak-password":"Password needs at least 6 characters.","auth/invalid-credential":"Wrong email or password.","auth/user-not-found":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/too-many-requests":"Too many tries. Wait a bit and try again.","auth/missing-email":"Type your email first.","permission-denied":"The database rules do not allow this yet. Publish the latest firestore.rules in Firebase.","room-missing":"Room not found. Check the ID and try again."};
   return m[e&&e.code]||"Something went wrong ("+((e&&(e.code||e.message))||"error")+")";
 }
 async function makeProfile(u,name){
@@ -671,6 +672,25 @@ async function loadProfile(u){
   if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo};return}
   await makeProfile(u,u.displayName||(u.email||"Player").split("@")[0]);
 }
+function showPw(on){
+  const i=$("apass"),b=$("apeek");if(!i||!b)return;
+  i.type=on?"text":"password";
+  b.textContent=on?"🙈":"👁";
+  b.title=b.ariaLabel=on?"Hide password":"Show password";
+}
+async function forgotPw(){
+  const email=$("aemail").value.trim(),err=$("aerr"),b=$("aforgot");
+  err.style.color="var(--warn)";err.textContent="";
+  if(!email){err.textContent="Type your email above first, then tap Forgot password.";return}
+  b.disabled=true;
+  try{
+    const f=await fbLoad();
+    await f.au.sendPasswordResetEmail(f.auth,email);
+    err.style.color="#6ee7a0";
+    err.textContent="If that email has an account, a reset link is on its way. Check your inbox and spam folder.";
+  }catch(e){err.textContent=fbErr(e)}
+  b.disabled=false;
+}
 function openStart(view){
   $("start").hidden=false;
   $("smode").hidden=view==="auth";$("sauth").hidden=view!=="auth";
@@ -681,12 +701,13 @@ function setAuthMode(m){
   $("atitle").textContent=su?"Create your account":"Log in";
   $("asubmit").textContent=su?"Create account":"Log in";
   $("aswap").textContent=su?"I already have an account":"Create an account";
-  $("aname").hidden=!su;$("aerr").textContent="";
+  $("aname").hidden=!su;$("aerr").textContent="";$("aerr").style.color="var(--warn)";
+  $("aforgotrow").hidden=su;showPw(false);
   $("apass").autocomplete=su?"new-password":"current-password";
 }
 async function submitAuth(){
   const email=$("aemail").value.trim(),pw=$("apass").value,name=$("aname").value.trim(),err=$("aerr");
-  err.textContent="";
+  err.textContent="";err.style.color="var(--warn)";
   if(!email||!pw){err.textContent="Enter your email and password.";return}
   if(authMode==="signup"&&!name){err.textContent="Enter a display name.";return}
   const b=$("asubmit");b.disabled=true;
@@ -868,6 +889,8 @@ $("goOn").onclick=()=>openStart("auth");
 $("aswap").onclick=()=>setAuthMode(authMode==="signup"?"login":"signup");
 $("aback").onclick=()=>{if(S.net)$("start").hidden=true;else openStart("mode")};
 $("asubmit").onclick=submitAuth;
+$("apeek").onclick=()=>{const i=$("apass");showPw(i.type==="password");i.focus()};
+$("aforgot").onclick=forgotPw;
 $("apass").onkeydown=e=>{if(e.key==="Enter")submitAuth()};
 document.querySelector(".slogo").src=document.querySelector(".logo").src;
 render();

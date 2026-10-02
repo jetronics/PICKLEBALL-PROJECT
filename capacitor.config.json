@@ -1,6 +1,6 @@
 {
   "appId": "com.openplay.manager",
-  "appName": "Open Play",
+  "appName": "WataPickle",
   "webDir": "www",
   "android": { "allowMixedContent": false }
 }
