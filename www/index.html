@@ -57,6 +57,12 @@ button.big{width:100%;padding:14px;font-size:1.05rem}
 .isorow small{color:var(--mute);display:block}
 .isorow button{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
 .tab[hidden]{display:none}
+#start{position:fixed;inset:0;background:var(--bg);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+#start[hidden]{display:none}
+.sbox{width:100%;max-width:380px;display:flex;flex-direction:column;gap:10px}
+.sbox>div{display:flex;flex-direction:column;gap:10px}
+.sbox button small{display:block;font-weight:400;opacity:.85;margin-top:2px;font-size:.78rem}
+.slogo{width:120px;height:120px;border-radius:24px;margin:0 auto}
 .pwrap{position:relative;container-type:inline-size;border-radius:12px;overflow:hidden;line-height:0}
 .pimg{display:block;width:100%;height:auto}
 .podium{position:absolute;inset:0;pointer-events:none;line-height:1.2}
@@ -204,11 +210,15 @@ td.held{color:var(--mute)}
 </div>
 
 </section>
+<section id="t-acct" class="tab" hidden>
+<div class="card" id="acctcard"></div>
+</section>
 </main>
 <nav id="tabs"><div>
 <button data-t="players"><b>👥</b>Players</button>
 <button data-t="play"><b>🏓</b>Play</button>
 <button data-t="rank"><b>🏆</b>Ranking</button>
+<button data-t="acct"><b>👤</b>Account</button>
 </div></nav>
 <div id="cropmodal" hidden><div class="avbox">
 <b>Crop avatar</b>
@@ -216,6 +226,24 @@ td.held{color:var(--mute)}
 <div class="row"><span>−</span><input id="cropzoom" type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span>+</span></div>
 <div class="empty" style="margin:6px 0 10px">Drag to move, pinch or use the slider to zoom. The circle is what shows as the avatar.</div>
 <div class="row" style="justify-content:flex-end"><button id="cropcancel">Cancel</button><button id="cropok" class="p">Use photo</button></div>
+</div></div>
+<div id="start" hidden><div class="sbox">
+<div id="smode">
+<img class="slogo" alt="">
+<h1 style="border:0;text-align:center;margin:0">WataPickle Matcher</h1>
+<button class="p big" id="goOff">🏓 Offline mode<small>No account needed. Quick open play on this phone.</small></button>
+<button class="big" id="goOn">🌐 Online mode<small>Sign in to host or join rooms.</small></button>
+</div>
+<div id="sauth" hidden>
+<h2 id="atitle" style="font-size:1rem">Log in</h2>
+<input id="aname" placeholder="Display name" maxlength="24" hidden>
+<input id="aemail" type="email" placeholder="Email" autocomplete="email">
+<input id="apass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+<div class="empty" id="aerr" style="color:var(--warn)"></div>
+<button class="p big" id="asubmit">Log in</button>
+<button class="big" id="aswap">Create an account</button>
+<button class="big" id="aback">← Back</button>
+</div>
 </div></div>
 <div id="avmodal" hidden><div class="avbox">
 <div class="row" style="justify-content:space-between"><div class="row"><span id="avprev"></span><b id="avname"></b></div><button id="avdone" class="p">Done</button></div>
@@ -601,8 +629,114 @@ arm("endplay","Tap again to end open play",endPlay);
 arm("newplay","Tap again to start fresh",resetRounds);
 arm("reset","Tap again to reset",resetRounds);
 arm("clearall","Tap again to delete all",()=>{S.players=[];S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.uid=1;S.ended=false;save();render()});
+const FBV="12.19.0";
+const FBC={apiKey:"AIzaSyAzL-UhrKLdfmJoTvwDQ6n3kQa2pVL_6OE",authDomain:"watapickle-matcher.firebaseapp.com",projectId:"watapickle-matcher",storageBucket:"watapickle-matcher.firebasestorage.app",messagingSenderId:"105232671906",appId:"1:105232671906:web:d7e4d0d66c89f6b55de3fb"};
+let FB=null,ME=null,authMode="login";
+async function fbLoad(){
+  if(FB)return FB;
+  const b="https://www.gstatic.com/firebasejs/"+FBV+"/";
+  let a,au,fs;
+  try{[a,au,fs]=await Promise.all([import(b+"firebase-app.js"),import(b+"firebase-auth.js"),import(b+"firebase-firestore.js")])}
+  catch(e){throw {code:"net"}}
+  const app=a.initializeApp(FBC);
+  FB={a,au,fs,auth:au.getAuth(app),db:fs.getFirestore(app)};
+  return FB;
+}
+function fbErr(e){
+  const m={"net":"Can't reach the online service. Check your internet connection.","auth/network-request-failed":"No internet connection.","auth/email-already-in-use":"That email already has an account. Try logging in.","auth/invalid-email":"That email address doesn't look right.","auth/weak-password":"Password needs at least 6 characters.","auth/invalid-credential":"Wrong email or password.","auth/user-not-found":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/too-many-requests":"Too many tries. Wait a bit and try again.","permission-denied":"The database rules aren't published yet. Paste the rules in Firestore and try again."};
+  return m[e&&e.code]||"Something went wrong ("+((e&&(e.code||e.message))||"error")+")";
+}
+async function makeProfile(u,name){
+  const f=FB;let no=null;
+  for(let i=0;i<6&&!no;i++){
+    const t=String(Math.floor(10000000+Math.random()*90000000));
+    try{await f.fs.setDoc(f.fs.doc(f.db,"accounts",t),{uid:u.uid});no=t}
+    catch(e){if(i===5||e.code!=="permission-denied")throw e}
+  }
+  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now()});
+  ME={uid:u.uid,email:u.email,name,acct:no};
+}
+async function loadProfile(u){
+  const f=FB,snap=await f.fs.getDoc(f.fs.doc(f.db,"users",u.uid));
+  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo};return}
+  await makeProfile(u,u.displayName||(u.email||"Player").split("@")[0]);
+}
+function openStart(view){
+  $("start").hidden=false;
+  $("smode").hidden=view==="auth";$("sauth").hidden=view!=="auth";
+  if(view==="auth")setAuthMode("login");
+}
+function setAuthMode(m){
+  authMode=m;const su=m==="signup";
+  $("atitle").textContent=su?"Create your account":"Log in";
+  $("asubmit").textContent=su?"Create account":"Log in";
+  $("aswap").textContent=su?"I already have an account":"Create an account";
+  $("aname").hidden=!su;$("aerr").textContent="";
+  $("apass").autocomplete=su?"new-password":"current-password";
+}
+async function submitAuth(){
+  const email=$("aemail").value.trim(),pw=$("apass").value,name=$("aname").value.trim(),err=$("aerr");
+  err.textContent="";
+  if(!email||!pw){err.textContent="Enter your email and password.";return}
+  if(authMode==="signup"&&!name){err.textContent="Enter a display name.";return}
+  const b=$("asubmit");b.disabled=true;
+  try{
+    const f=await fbLoad();let u;
+    if(authMode==="signup"){
+      u=(await f.au.createUserWithEmailAndPassword(f.auth,email,pw)).user;
+      await f.au.updateProfile(u,{displayName:name});
+      await makeProfile(u,name);
+    }else{
+      u=(await f.au.signInWithEmailAndPassword(f.auth,email,pw)).user;
+      await loadProfile(u);
+    }
+    S.net="online";save();$("start").hidden=true;$("apass").value="";renderAcct();showTab("acct");
+  }catch(e){err.textContent=fbErr(e)}
+  b.disabled=false;
+}
+async function restoreNet(){
+  if(S.net!=="online")return;
+  try{
+    const f=await fbLoad();await f.auth.authStateReady();
+    if(f.auth.currentUser)await loadProfile(f.auth.currentUser);
+  }catch(e){}
+  renderAcct();
+}
+function renderAcct(){
+  const c=$("acctcard");
+  if(S.net==="online"&&ME){
+    c.innerHTML=`<h2>Account</h2><div style="font-size:1.15rem;font-weight:800">${esc(ME.name)}</div><div class="empty">${esc(ME.email)}</div>
+<div class="grow" style="margin-top:10px"><span>Account no.</span><b style="width:auto;font-size:1.05rem;letter-spacing:.05em">WP-${esc(ME.acct)}</b><button id="cpacct">Copy</button></div>
+<div class="empty" style="margin:10px 0">Rooms are coming next: you will be able to host a room and let others join with a room ID.</div>
+<div class="row"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div>`;
+  }else if(S.net==="online"){
+    c.innerHTML=`<h2>Account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button><button id="useoff">Use offline mode</button></div>`;
+  }else{
+    c.innerHTML=`<h2>Account</h2><div class="empty">Offline mode: no account needed. Everything stays on this phone.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Go online</button></div>`;
+  }
+}
+$("acctcard").onclick=async e=>{
+  const id=e.target.id;
+  if(id==="signin")openStart("auth");
+  else if(id==="useoff"){S.net="offline";save();renderAcct()}
+  else if(id==="logout"){try{const f=await fbLoad();await f.au.signOut(f.auth)}catch(x){}ME=null;S.net="offline";save();renderAcct()}
+  else if(id==="cpacct"&&ME){
+    const t="WP-"+ME.acct;
+    try{await navigator.clipboard.writeText(t)}catch(x){}
+    e.target.textContent="Copied";setTimeout(()=>{e.target.textContent="Copy"},1500);
+  }
+};
+$("goOff").onclick=()=>{S.net="offline";save();$("start").hidden=true;renderAcct()};
+$("goOn").onclick=()=>openStart("auth");
+$("aswap").onclick=()=>setAuthMode(authMode==="signup"?"login":"signup");
+$("aback").onclick=()=>{if(S.net)$("start").hidden=true;else openStart("mode")};
+$("asubmit").onclick=submitAuth;
+$("apass").onkeydown=e=>{if(e.key==="Enter")submitAuth()};
+document.querySelector(".slogo").src=document.querySelector(".logo").src;
 render();
 showTab(S.tab||"players");
+renderAcct();
+if(!S.net)openStart("mode");else restoreNet();
 </script>
 </body>
 </html>
