@@ -750,25 +750,29 @@ async function submitAuth(){
 }
 const APP_BUILD=0; // stamped with the build number by the APK workflow
 const isApp=()=>{try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())||location.hostname==="localhost"}catch(e){return false}};
-let updT=0;
+let updT=0,updMsg="";
+function updNote(m){updMsg=m;try{renderAcct()}catch(e){}}
 async function checkUpdate(force){
-  if(!APP_BUILD||!isApp())return; // website users always get the latest; only installed APKs need the notice
+  if(!APP_BUILD){updNote("not stamped (website or test build)");return}
+  if(!isApp()){updNote("website: always the latest version");return}
   if(!force&&Date.now()-updT<600000)return;
   updT=Date.now();
   const bar=$("updbar");
   try{
     const f=await fbLoad(),snap=await f.fs.getDoc(f.fs.doc(f.db,"config","app"));
-    if(!snap.exists()){bar.hidden=true;return}
+    if(!snap.exists()){bar.hidden=true;updNote("no config/app document found");return}
     const d=snap.data(),latest=Number(d.latestBuild)||0,url=String(d.url||"");
-    if(latest<=APP_BUILD||!/^https:\/\//.test(url)){bar.hidden=true;return}
+    if(latest<=APP_BUILD){bar.hidden=true;updNote("up to date (latest build "+latest+")");return}
+    if(!/^https:\/\//.test(url)){bar.hidden=true;updNote("newer build "+latest+" found but url is missing or not https");return}
     let skip=0;try{skip=+localStorage.getItem("wp-upd-skip")||0}catch(e){}
-    if(!d.force&&skip>=latest){bar.hidden=true;return}
+    if(!d.force&&skip>=latest){bar.hidden=true;updNote("build "+latest+" available (you chose Later)");return}
     bar.innerHTML="<b>🔔 Update available</b> · build "+latest+" (you have "+APP_BUILD+")"+(d.notes?'<div class="empty">'+esc(String(d.notes))+"</div>":"")
       +'<div class="row" style="margin-top:8px"><button class="p" id="updgo">Download update</button>'+(d.force?"":'<button id="updlater">Later</button>')+"</div>";
     bar.hidden=false;
+    updNote("build "+latest+" available");
     $("updgo").onclick=()=>{location.href=url};
-    const lt=$("updlater");if(lt)lt.onclick=()=>{try{localStorage.setItem("wp-upd-skip",String(latest))}catch(e){}bar.hidden=true};
-  }catch(e){}
+    const lt=$("updlater");if(lt)lt.onclick=()=>{try{localStorage.setItem("wp-upd-skip",String(latest))}catch(e){}bar.hidden=true;updNote("build "+latest+" available (you chose Later)")};
+  }catch(e){updNote("could not check ("+((e&&(e.code||e.message))||"error")+")")}
 }
 async function restoreNet(){
   if(S.net!=="online")return;
@@ -794,7 +798,7 @@ function renderAcct(){
 <div class="row" style="gap:12px"><span style="font-size:2rem;font-weight:800">${rt.toFixed(2)}</span>${badge(rt)}<span class="empty">${level(rt)}</span></div>
 <div class="empty">${ME.games} rated game${ME.games===1?"":"s"}${ME.hist.length?" · "+W+"W–"+L+"L in your last "+ME.hist.length+" open play"+(ME.hist.length===1?"":"s"):""}</div>
 ${ME.games===0?`<div class="row" style="margin-top:8px"><label for="merate">Starting level</label><input id="merate" type="number" inputmode="decimal" step="0.1" min="2" max="6" value="${rt.toFixed(1)}" style="flex:0 0 80px"></div><div class="empty">Set this before your first open play. After that your rating updates by itself.</div>`:""}
-<div class="row" style="margin-top:12px"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div>`;
+<div class="row" style="margin-top:12px"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div><div class="empty" style="margin-top:12px;font-size:.75rem">App build: ${APP_BUILD||"web"}${updMsg?" · update check: "+esc(updMsg):""}</div>`;
     const H=ME.hist;
     hc.innerHTML="<h2>Open play history</h2>"+(H.length?H.map(h=>{
       const d=r2((h.to||0)-(h.from||0)),dt=new Date(h.at).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
@@ -802,10 +806,10 @@ ${ME.games===0?`<div class="row" style="margin-top:8px"><label for="merate">Star
       :'<div class="empty">No open plays yet. When a host adds you to the player list and ends the session, your result shows up here.</div>');
   }else if(S.net==="online"){
     hc.hidden=true;
-    c.innerHTML=`<h2>Account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button><button id="useoff">Use offline mode</button></div>`;
+    c.innerHTML=`<h2>Account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button><button id="useoff">Use offline mode</button></div><div class="empty" style="margin-top:12px;font-size:.75rem">App build: ${APP_BUILD||"web"}${updMsg?" · update check: "+esc(updMsg):""}</div>`;
   }else{
     hc.hidden=true;
-    c.innerHTML=`<h2>Account</h2><div class="empty">Offline mode: no account needed. Everything stays on this phone.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Go online</button></div>`;
+    c.innerHTML=`<h2>Account</h2><div class="empty">Offline mode: no account needed. Everything stays on this phone.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Go online</button></div><div class="empty" style="margin-top:12px;font-size:.75rem">App build: ${APP_BUILD||"web"}${updMsg?" · update check: "+esc(updMsg):""}</div>`;
   }
 }
 function renderMeAv(){
