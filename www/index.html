@@ -57,6 +57,9 @@ button.big{width:100%;padding:14px;font-size:1.05rem}
 .isorow small{color:var(--mute);display:block}
 .isorow button{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
 .tab[hidden]{display:none}
+.hrow{padding:10px 0;border-bottom:1px solid var(--line)}
+.hrow b{display:block}
+.hrow small{display:block;color:var(--mute);font-size:.78rem;margin-top:2px}
 .sels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0}
 .sel{display:flex;align-items:center;gap:6px;padding:6px 8px;text-align:left;min-width:0;opacity:.55}
 .sel .av{margin:0}
@@ -252,6 +255,7 @@ td.held{color:var(--mute)}
 <section id="t-acct" class="tab" hidden>
 <div class="card" id="acctcard"></div>
 <div class="card" id="roomcard" hidden></div>
+<div class="card" id="histcard" hidden></div>
 </section>
 </main>
 <nav id="tabs"><div>
@@ -280,8 +284,9 @@ td.held{color:var(--mute)}
 <h2 id="atitle" style="font-size:1rem">Log in</h2>
 <input id="aname" placeholder="Display name" maxlength="24" hidden>
 <input id="aemail" type="email" placeholder="Email" autocomplete="email">
-<input id="apass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+<div class="row" style="flex-wrap:nowrap"><input id="apass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password"><button id="apeek" type="button" style="flex:none">Show</button></div>
 <div class="empty" id="aerr" style="color:var(--warn)"></div>
+<button class="big" id="aforgot" type="button" style="border:0;background:none;color:var(--acc);padding:4px">Forgot password?</button>
 <button class="p big" id="asubmit">Log in</button>
 <button class="big" id="aswap">Create an account</button>
 <button class="big" id="aback">← Back</button>
@@ -289,7 +294,7 @@ td.held{color:var(--mute)}
 </div></div>
 <div id="avmodal" hidden><div class="avbox">
 <div class="row" style="justify-content:space-between"><div class="row"><span id="avprev"></span><b id="avname"></b></div><button id="avdone" class="p">Done</button></div>
-<div class="row" style="margin-top:12px"><label for="avrate">Rating</label><input id="avrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" style="flex:0 0 80px"><span id="avlvl" class="empty"></span></div>
+<div class="row" id="avraterow" style="margin-top:12px"><label for="avrate">Rating</label><input id="avrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" style="flex:0 0 80px"><span id="avlvl" class="empty"></span></div>
 <div class="egrid" id="egrid"></div>
 <div class="row"><button id="avshot">📸 Take photo</button><button id="avup">🖼 Choose photo</button><button id="avini">Initials</button></div>
 <input type="file" id="avfile" accept="image/*" hidden>
@@ -345,12 +350,18 @@ function av(x,size=28){
   return `<span class="av" style="${st};background:hsl(${hue(p.name)} 55% 38%)">${esc(ini)}</span>`;
 }
 let avId=null;
-const avP=()=>S.players.find(x=>x.id===avId);
+const avP=()=>avId==="me"&&ME?{name:ME.name,get av(){return ME.av},set av(v){ME.av=v}}:S.players.find(x=>x.id===avId);
+async function saveProfile(){
+  if(!(FB&&ME))return;
+  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),{avatar:ME.av||null})}catch(e){toast(fbErr(e))}
+}
+function commitAv(){if(avId==="me"){saveProfile();renderAcct()}else save();renderAv();render()}
 function openAv(id){avId=id;renderAv();$("avmodal").hidden=false}
 function renderAv(){
-  const p=avP();if(!p)return;
+  const p=avP();if(!p)return;const me=avId==="me";
   $("avprev").innerHTML=av(p,48);$("avname").textContent=p.name;
-  $("avrate").value=(p.rt??3).toFixed(1);$("avlvl").textContent="Now "+(RT[p.id]??3).toFixed(2)+" · Rank "+tier(RT[p.id]??3)+" · "+level(RT[p.id]??3);
+  $("avraterow").hidden=me;
+  if(!me){$("avrate").value=(p.rt??3).toFixed(1);$("avlvl").textContent="Now "+(RT[p.id]??3).toFixed(2)+" · Rank "+tier(RT[p.id]??3)+" · "+level(RT[p.id]??3)}
   $("egrid").innerHTML=EMOJI.map(e=>`<button data-e="${e}" class="${p.av&&p.av.t==="e"&&p.av.v===e?"on":""}">${e}</button>`).join("");
 }
 function addPlayer(){
@@ -398,7 +409,7 @@ function generate(){
     for(const x of c.A)for(const y of c.B)S.opp[k(x,y)]=(S.opp[k(x,y)]||0)+1;
   }
   S.players.forEach(p=>{if(active.includes(p.id)){p.played++;p.sat=0}else if(!p.hold)p.sat++});
-  S.ended=false;S.round++;S.cur={courts:best,bench};save();render();
+  S.ended=false;if(!S.sid)S.sid=Date.now();S.round++;S.cur={courts:best,bench};save();render();
   showTab("play");
 }
 function stats(incl=true){
@@ -533,6 +544,7 @@ function render(){
   if(S.ended)$("endedsum").textContent=(S.endRounds||0)+" round"+((S.endRounds||0)===1?"":"s")+" played · final standings below. Tap Generate Round on the Play tab to keep going, or start fresh.";
   renderIso();
   renderRank();renderDeck();renderTour();
+  if(S.ended&&RM)settleSession();
 }
 $("add").onclick=addPlayer;
 $("name").onkeydown=e=>{if(e.key==="Enter")addPlayer()};
@@ -572,10 +584,10 @@ $("m2").onclick=()=>{S.mode=2;save();render()};
 $("cm").onclick=()=>{S.courts=Math.max(1,S.courts-1);save();render()};
 $("cp").onclick=()=>{S.courts=Math.min(12,S.courts+1);save();render()};
 $("go").onclick=generate;
-$("egrid").onclick=e=>{const b=e.target.closest("[data-e]"),p=avP();if(!b||!p)return;p.av={t:"e",v:b.dataset.e};save();renderAv();render()};
+$("egrid").onclick=e=>{const b=e.target.closest("[data-e]"),p=avP();if(!b||!p)return;p.av={t:"e",v:b.dataset.e};commitAv()};
 $("avrate").onchange=()=>{const p=avP();if(!p)return;p.rt=Math.round(clampR(parseFloat($("avrate").value))*100)/100;save();render();renderAv()};
 $("rate").oninput=()=>{{const v=clampR(parseFloat($("rate").value));$("lvl").textContent=tier(v)+" · "+level(v)}};
-$("avini").onclick=()=>{const p=avP();if(!p)return;p.av=null;save();renderAv();render()};
+$("avini").onclick=()=>{const p=avP();if(!p)return;p.av=null;commitAv()};
 $("avup").onclick=()=>$("avfile").click();
 let CR=null; // crop state
 const cropCanvas=()=>$("cropstage");
@@ -633,7 +645,7 @@ function closeCrop(){$("cropmodal").hidden=true;CR=null}
     x.setTransform(k,0,0,k,N/2,N/2);
     x.drawImage(c.im,c.ox-c.im.width*c.s/2,c.oy-c.im.height*c.s/2,c.im.width*c.s,c.im.height*c.s);
     p.av={t:"p",v:o.toDataURL("image/jpeg",.85)};
-    closeCrop();save();renderAv();render();
+    closeCrop();commitAv();
   };
 })();
 const photo=e=>{
@@ -661,11 +673,11 @@ function arm(id,label,fn){
     b.dataset.arm="1";b.textContent=label;b.classList.add("danger");t=setTimeout(off,4000);
   };
 }
-function resetRounds(){const R=ratings(true),G=RG;S.players.forEach(p=>{p.rt=Math.round(R[p.id]*100)/100;p.gm=G[p.id];p.played=0;p.sat=0});S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.ended=false;S.endRounds=0;save();render()}
+function resetRounds(){const R=ratings(true),G=RG;S.players.forEach(p=>{p.rt=Math.round(R[p.id]*100)/100;p.gm=G[p.id];p.played=0;p.sat=0});S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.ended=false;S.endRounds=0;S.sid=null;S.endedAt=null;save();render()}
 function endPlay(){
   if(!S.cur)return;
   S.hist.push(...S.cur.courts.filter(winner).map(c=>({A:c.A,B:c.B,sa:c.sa,sb:c.sb,win:winner(c)})));
-  S.cur=null;S.ended=true;S.endRounds=S.round;
+  S.cur=null;S.ended=true;S.endRounds=S.round;S.endedAt=Date.now();
   save();render();showTab("rank");
 }
 arm("endplay","Tap again to end open play",endPlay);
@@ -798,12 +810,12 @@ async function makeProfile(u,name){
     try{await f.fs.setDoc(f.fs.doc(f.db,"accounts",t),{uid:u.uid});no=t}
     catch(e){if(i===5||e.code!=="permission-denied")throw e}
   }
-  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now()});
-  ME={uid:u.uid,email:u.email,name,acct:no};
+  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now(),rating:3,startRating:3,games:0,avatar:null});
+  ME={uid:u.uid,email:u.email,name,acct:no,av:null,rating:3,games:0,hist:[]};
 }
 async function loadProfile(u){
   const f=FB,snap=await f.fs.getDoc(f.fs.doc(f.db,"users",u.uid));
-  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo};return}
+  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo,av:d.avatar||null,rating:d.rating??3,games:d.games||0,hist:[]};loadHistory();return}
   await makeProfile(u,u.displayName||(u.email||"Player").split("@")[0]);
 }
 function openStart(view){
@@ -816,12 +828,12 @@ function setAuthMode(m){
   $("atitle").textContent=su?"Create your account":"Log in";
   $("asubmit").textContent=su?"Create account":"Log in";
   $("aswap").textContent=su?"I already have an account":"Create an account";
-  $("aname").hidden=!su;$("aerr").textContent="";
+  $("aname").hidden=!su;$("aerr").textContent="";$("aforgot").hidden=su;$("apass").type="password";$("apeek").textContent="Show";
   $("apass").autocomplete=su?"new-password":"current-password";
 }
 async function submitAuth(){
   const email=$("aemail").value.trim(),pw=$("apass").value,name=$("aname").value.trim(),err=$("aerr");
-  err.textContent="";
+  err.style.color="var(--warn)";err.textContent="";
   if(!email||!pw){err.textContent="Enter your email and password.";return}
   if(authMode==="signup"&&!name){err.textContent="Enter a display name.";return}
   const b=$("asubmit");b.disabled=true;
@@ -850,12 +862,18 @@ async function restoreNet(){
   renderAcct();
 }
 function renderAcct(){
-  renderRoom();
+  renderRoom();renderHist();
   const c=$("acctcard");
   if(S.net==="online"&&ME){
-    c.innerHTML=`<h2>Account</h2><div style="font-size:1.15rem;font-weight:800">${esc(ME.name)}</div><div class="empty">${esc(ME.email)}</div>
-<div class="grow" style="margin-top:10px"><span>Account no.</span><b style="width:auto;font-size:1.05rem;letter-spacing:.05em">WP-${esc(ME.acct)}</b><button id="cpacct">Copy</button></div>
-<div class="row"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div>`;
+    const lv=ME.rating,g=ME.games;
+    c.innerHTML=`<h2>Account</h2>
+<div class="row" style="flex-wrap:nowrap;gap:14px;margin-bottom:8px"><button class="avb" id="myav" aria-label="Change avatar">${av({name:ME.name,av:ME.av},84)}</button><div style="min-width:0"><div style="font-size:1.15rem;font-weight:800;overflow:hidden;text-overflow:ellipsis">${esc(ME.name)}</div><div class="empty" style="overflow:hidden;text-overflow:ellipsis">${esc(ME.email)}</div><div class="empty">Tap your avatar to change it</div></div></div>
+<div class="grow"><span>Account no.</span><b style="width:auto;font-size:1.05rem;letter-spacing:.05em">WP-${esc(ME.acct)}</b><button id="cpacct">Copy</button></div>
+<h2 style="margin-top:14px">My rating</h2>
+<div class="row" style="gap:12px;align-items:center"><span style="font-size:2.4rem;font-weight:800;line-height:1">${lv.toFixed(2)}</span>${badge(lv)}<span>${level(lv)}</span></div>
+<div class="empty" style="margin-top:4px">${g} rated game${g===1?"":"s"}</div>
+${g===0?`<div class="row" style="margin-top:10px"><label for="myrate">Starting level</label><input id="myrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" value="${lv.toFixed(1)}" style="flex:0 0 90px"></div><div class="empty" style="margin-top:6px">Set this before your first open play. After that your rating updates by itself.</div>`:`<div class="empty">Your rating updates by itself after every open play you finish.</div>`}
+<div class="row" style="margin-top:12px"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div>`;
   }else if(S.net==="online"){
     c.innerHTML=`<h2>Account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button><button id="useoff">Use offline mode</button></div>`;
   }else{
@@ -905,7 +923,7 @@ async function enterRoom(id){
   const d=snap.data();
   RM={id,host:d.hostUid===ME.uid,name:d.name,hostName:d.hostName,members:[],seen:false,unsubs:[]};
   LOCALS=S;applyState(d);
-  await f.fs.setDoc(f.fs.doc(f.db,"rooms",id,"members",ME.uid),{name:ME.name,acct:ME.acct,joinedAt:Date.now()});
+  await f.fs.setDoc(f.fs.doc(f.db,"rooms",id,"members",ME.uid),{name:ME.name,acct:ME.acct,joinedAt:Date.now(),rating:ME.rating,games:ME.games,av:ME.av&&ME.av.t==="e"?ME.av:null});
   RM.unsubs.push(f.fs.onSnapshot(ref,s=>{
     if(!RM)return;
     const x=s.data();
@@ -944,7 +962,7 @@ function renderRoom(){
   c.hidden=false;
   if(RM){
     const rows=RM.members.map(m=>{
-      const act=RM.host&&m.uid!==ME.uid?`<div class="row"><button data-addp="${esc(m.uid)}">+ Player</button><button class="sk" data-rm="${esc(m.uid)}">Remove</button></div>`:"";
+      const act=RM.host?`<div class="row"><button data-addp="${esc(m.uid)}">+ Player</button>${m.uid!==ME.uid?`<button class="sk" data-rm="${esc(m.uid)}">Remove</button>`:""}</div>`:"";
       return `<div class="mrow"><span><b>${esc(m.name)}</b>${m.uid===ME.uid?" (you)":""}<small>WP-${esc(m.acct||"")}</small></span>${act}</div>`;
     }).join("");
     c.innerHTML=`<h2>Your room</h2><div style="font-size:1.1rem;font-weight:800">${esc(RM.name)}</div>
@@ -983,13 +1001,59 @@ $("roomcard").onclick=async e=>{
     if(!m)return;
     if(S.players.some(p=>p.mid===m.uid)){toast(m.name+" is already a player.");return}
     const act=S.players.filter(p=>!p.hold),min=act.length?Math.min(...act.map(p=>p.played)):0;
-    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:3,mid:m.uid});
+    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:m.rating??3,gm:m.games||0,av:m.av||null,mid:m.uid});
     save();render();toast(m.name+" added to players.");
   }
 };
+const SIG={};
+async function loadHistory(){
+  if(!(FB&&ME))return;
+  try{
+    const f=FB,qs=await f.fs.getDocs(f.fs.query(f.fs.collection(f.db,"users",ME.uid,"history"),f.fs.orderBy("at","desc"),f.fs.limit(20)));
+    ME.hist=qs.docs.map(d=>d.data());
+  }catch(e){ME.hist=ME.hist||[]}
+  renderHist();
+}
+function renderHist(){
+  const c=$("histcard");
+  if(!(S.net==="online"&&ME)){c.hidden=true;return}
+  c.hidden=false;
+  const h=ME.hist||[];
+  c.innerHTML="<h2>Open play history</h2>"+(h.length?h.map(x=>{
+    const d=x.ratingAfter-x.ratingBefore,dt=new Date(x.at).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+    return `<div class="hrow"><b>${esc(x.roomName||"Open play")}</b><small>${dt} · Rank #${x.rank} of ${x.of} · ${x.wins}W-${x.losses}L · ${(x.diff>0?"+":"")+x.diff} pts</small><small>Rating ${x.ratingBefore.toFixed(2)} → ${x.ratingAfter.toFixed(2)} <span class="dl ${d>=0?"up":"dn"}">${d>=0?"+":""}${d.toFixed(2)}</span></small></div>`;
+  }).join(""):'<div class="empty">No open plays yet. When a host adds you to the player list and ends the session, your result shows up here.</div>');
+}
+async function settleSession(){
+  if(!(RM&&ME&&FB&&S.ended&&S.sid))return;
+  const p=S.players.find(q=>q.mid===ME.uid);if(!p)return;
+  const pl=stats().filter(x=>x.w+x.l>0),idx=pl.findIndex(x=>x.p.id===p.id);
+  if(idx<0)return;
+  const x=pl[idx],R=ratings(true),after=Math.round(R[p.id]*100)/100,key=RM.id+"_"+S.sid;
+  const entry={roomId:RM.id,roomName:RM.name,sid:S.sid,at:S.endedAt||Date.now(),games:x.w+x.l,wins:x.w,losses:x.l,diff:x.d,rank:idx+1,of:pl.length,ratingBefore:Math.round((p.rt??3)*100)/100,ratingAfter:after,gamesBefore:p.gm||0};
+  const sig=JSON.stringify(entry);
+  if(SIG[key]===sig)return;
+  SIG[key]=sig;
+  try{
+    const f=FB;
+    await f.fs.setDoc(f.fs.doc(f.db,"users",ME.uid,"history",key),entry);
+    const games=(p.gm||0)+x.w+x.l;
+    await f.fs.updateDoc(f.fs.doc(f.db,"users",ME.uid),{rating:after,games});
+    ME.rating=after;ME.games=games;
+    await loadHistory();renderAcct();toast("Open play saved to your account history.");
+  }catch(e){delete SIG[key]}
+}
+$("acctcard").onchange=async e=>{
+  if(e.target.id!=="myrate"||!ME||ME.games!==0||!FB)return;
+  const v=Math.round(clampR(parseFloat(e.target.value))*100)/100;
+  ME.rating=v;
+  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),{rating:v,startRating:v})}catch(x){toast(fbErr(x))}
+  renderAcct();
+};
 $("acctcard").onclick=async e=>{
-  const id=e.target.id;
+  const bt=e.target.closest("button"),id=bt?bt.id:"";
   if(id==="signin")openStart("auth");
+  else if(id==="myav")openAv("me");
   else if(id==="useoff"){await leaveRoom();S.net="offline";save();renderAcct()}
   else if(id==="logout"){await leaveRoom();try{const f=await fbLoad();await f.au.signOut(f.auth)}catch(x){}ME=null;S.net="offline";save();renderAcct()}
   else if(id==="cpacct"&&ME){
@@ -1003,6 +1067,17 @@ $("goOn").onclick=()=>openStart("auth");
 $("aswap").onclick=()=>setAuthMode(authMode==="signup"?"login":"signup");
 $("aback").onclick=()=>{if(S.net)$("start").hidden=true;else openStart("mode")};
 $("asubmit").onclick=submitAuth;
+$("apeek").onclick=()=>{const i=$("apass"),h=i.type==="password";i.type=h?"text":"password";$("apeek").textContent=h?"Hide":"Show"};
+$("aforgot").onclick=async()=>{
+  const email=$("aemail").value.trim(),err=$("aerr");
+  err.style.color="var(--warn)";
+  if(!email){err.textContent="Type your email above first, then tap Forgot password.";return}
+  err.textContent="Sending…";
+  try{
+    const f=await fbLoad();await f.au.sendPasswordResetEmail(f.auth,email);
+    err.style.color="var(--acc)";err.textContent="If that email has an account, a reset link is on its way. Check your inbox and spam folder.";
+  }catch(e){err.textContent=fbErr(e)}
+};
 $("apass").onkeydown=e=>{if(e.key==="Enter")submitAuth()};
 document.querySelector(".slogo").src=document.querySelector(".logo").src;
 render();
