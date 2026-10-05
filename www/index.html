@@ -101,6 +101,8 @@ body.ro #t-tour :is(button,input),body.ro #t-players :is(button,input),body.ro #
 .mrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
 .mrow small{display:block;color:var(--mute);font-size:.75rem}
 .mrow .row{gap:6px;flex-wrap:nowrap}
+#confetti{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:95}
+#confetti[hidden]{display:none}
 #toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;z-index:90;background:var(--acc);color:var(--accink);font-weight:700;padding:12px 14px;border-radius:12px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 #toast[hidden]{display:none}
 #start{position:fixed;inset:0;background:var(--bg);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
@@ -241,6 +243,7 @@ td.held{color:var(--mute)}
 
 </section>
 <section id="t-rank" class="tab" hidden>
+<div class="row" style="justify-content:flex-end;margin-bottom:8px"><button id="celebtn" aria-label="Replay celebration" title="Replay celebration">🎉</button><button id="mutebtn" aria-label="Sound on or off" title="Sound on or off">🔊</button></div>
 <div class="card" id="endedcard" hidden>
 <h2>🏁 Open play ended</h2>
 <div class="empty" id="endedsum"></div>
@@ -275,6 +278,7 @@ td.held{color:var(--mute)}
 <button data-t="acct"><b>👤</b>Account</button>
 </div></nav>
 <div id="toast" hidden></div>
+<canvas id="confetti" hidden></canvas>
 <div id="cropmodal" hidden><div class="avbox">
 <b>Crop avatar</b>
 <canvas id="cropstage"></canvas>
@@ -667,13 +671,92 @@ $("avfile").onchange=photo;$("avcam").onchange=photo;
 $("avshot").onclick=()=>$("avcam").click();
 $("avdone").onclick=()=>{$("avmodal").hidden=true;avId=null};
 $("avmodal").onclick=e=>{if(e.target.id==="avmodal")$("avdone").onclick()};
+
+/* ---- celebration: confetti + synthesized crowd applause ---- */
+let muted=false;try{muted=localStorage.getItem("wp-mute")==="1"}catch(e){}
+let actx=null,noiseB=null,celT=0,confRaf=0;
+const reduceMotion=()=>{try{return window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches}catch(e){return false}};
+function audioCtx(){
+  if(!actx){try{const C=window.AudioContext||window.webkitAudioContext;if(C)actx=new C()}catch(e){}}
+  if(actx&&actx.state==="suspended"){try{actx.resume()}catch(e){}}
+  return actx;
+}
+function noiseBuf(ctx){
+  if(noiseB&&noiseB.sampleRate===ctx.sampleRate)return noiseB;
+  const n=ctx.sampleRate*2,b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+  return noiseB=b;
+}
+function applause(dur,vol){
+  const ctx=audioCtx();if(!ctx||muted)return;
+  try{
+    const t0=ctx.currentTime+0.03,nb=noiseBuf(ctx);
+    const master=ctx.createGain(),comp=ctx.createDynamicsCompressor();
+    master.gain.value=vol;master.connect(comp);comp.connect(ctx.destination);
+    const env=t=>Math.max(0,Math.min(1,t/0.5)*Math.min(1,(dur-t)/1.4));
+    const bed=ctx.createBufferSource();bed.buffer=nb;bed.loop=true;
+    const bp=ctx.createBiquadFilter();bp.type="bandpass";bp.frequency.value=1500;bp.Q.value=0.5;
+    const bg=ctx.createGain();
+    bg.gain.setValueAtTime(0.0001,t0);bg.gain.linearRampToValueAtTime(0.2,t0+0.6);
+    bg.gain.setValueAtTime(0.2,t0+Math.max(0.7,dur-1.4));bg.gain.linearRampToValueAtTime(0.0001,t0+dur);
+    bed.connect(bp);bp.connect(bg);bg.connect(master);bed.start(t0);bed.stop(t0+dur+0.1);
+    const n=Math.round(dur*34);
+    for(let i=0;i<n;i++){
+      let t;do{t=Math.random()*(dur-0.1)}while(Math.random()>env(t)+0.05);
+      const src=ctx.createBufferSource();src.buffer=nb;
+      const f=ctx.createBiquadFilter();f.type="bandpass";f.frequency.value=1000+Math.random()*2800;f.Q.value=0.7+Math.random()*1.2;
+      const g=ctx.createGain(),a=0.5*(0.35+Math.random()*0.65)*(0.4+0.6*env(t)),at=t0+t;
+      g.gain.setValueAtTime(0.0001,at);g.gain.linearRampToValueAtTime(a,at+0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001,at+0.05+Math.random()*0.05);
+      src.connect(f);f.connect(g);g.connect(master);src.start(at,Math.random()*1.5,0.12);
+    }
+  }catch(e){}
+}
+function confetti(n,ms){
+  if(reduceMotion())return;
+  const cv=$("confetti");if(!cv||!cv.getContext)return;
+  if(confRaf){cancelAnimationFrame(confRaf);confRaf=0}
+  const dpr=Math.min(2,window.devicePixelRatio||1),W=window.innerWidth||360,H=window.innerHeight||640,ctx=cv.getContext("2d");
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);cv.hidden=false;
+  const cols=["#f5c542","#ffd966","#2f8cff","#ffffff","#ff6b6b","#6ee7a0"];
+  const ps=Array.from({length:n},()=>({x:Math.random()*W,y:-20-Math.random()*H*0.7,vx:(Math.random()-.5)*1.6,vy:2+Math.random()*3.2,w:6+Math.random()*6,h:9+Math.random()*8,r:Math.random()*6.28,vr:(Math.random()-.5)*.3,c:cols[Math.floor(Math.random()*cols.length)],s:Math.random()*6.28,ss:.04+Math.random()*.06}));
+  const t0=performance.now();
+  const step=now=>{
+    const el=now-t0;ctx.clearRect(0,0,W,H);
+    let live=0;
+    for(const p of ps){
+      p.s+=p.ss;p.x+=p.vx+Math.sin(p.s)*1.1;p.y+=p.vy;p.r+=p.vr;
+      if(p.y>H+30)continue;live++;
+      ctx.save();ctx.globalAlpha=el>ms-900?Math.max(0,(ms-el)/900):1;
+      ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.scale(1,Math.cos(p.s*2));
+      ctx.fillStyle=p.c;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();
+    }
+    if(el<ms&&live>0)confRaf=requestAnimationFrame(step);
+    else{confRaf=0;ctx.clearRect(0,0,W,H);cv.hidden=true}
+  };
+  confRaf=requestAnimationFrame(step);
+}
+function celebrate(level,force){
+  const now=Date.now();
+  if(!force&&level==="small"){
+    const pc=$("podiumcard");
+    if(now-celT<30000||!pc||pc.hidden)return;
+  }
+  celT=now;
+  if(level==="full"){confetti(150,5200);applause(5,0.85)}
+  else{confetti(55,2600);applause(2.2,0.5)}
+}
+function setMuteIcon(){const b=$("mutebtn");if(b)b.textContent=muted?"🔇":"🔊"}
 function showTab(t){
   S.tab=t;save();
   document.querySelectorAll(".tab").forEach(x=>x.hidden=x.id!=="t-"+t);
   document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
   window.scrollTo(0,0);
 }
-$("tabs").onclick=e=>{const b=e.target.closest("[data-t]");if(b)showTab(b.dataset.t)};
+$("tabs").onclick=e=>{const b=e.target.closest("[data-t]");if(b){showTab(b.dataset.t);if(b.dataset.t==="rank")celebrate("small")}};
+$("celebtn").onclick=()=>celebrate("full",true);
+$("mutebtn").onclick=()=>{muted=!muted;try{localStorage.setItem("wp-mute",muted?"1":"0")}catch(e){}setMuteIcon()};
+setMuteIcon();
 function arm(id,label,fn){
   const b=$(id),orig=b.textContent;let t;
   const off=()=>{b.dataset.arm="";b.textContent=orig;b.classList.remove("danger")};
@@ -687,7 +770,7 @@ function endPlay(){
   if(!S.cur)return;
   S.hist.push(...S.cur.courts.filter(winner).map(c=>({A:c.A,B:c.B,sa:c.sa,sb:c.sb,win:winner(c)})));
   S.cur=null;S.ended=true;S.endRounds=S.round;S.endedAt=Date.now();
-  save();render();showTab("rank");
+  save();render();celebrate("full");showTab("rank");
 }
 arm("endplay","Tap again to end open play",endPlay);
 arm("newplay","Tap again to start fresh",resetRounds);
@@ -1107,7 +1190,8 @@ async function enterRoom(id){
     const x=s.data();
     if(!s.exists()||x.closed){leaveRoom("The host closed the room.");return}
     RM.name=x.name;
-    if(!RM.host){applyState(x);render()}
+    const firstSnap=!RM.snapSeen;RM.snapSeen=true;
+    if(!RM.host){const wasEnded=S.ended;applyState(x);render();if(!firstSnap&&S.ended&&!wasEnded)celebrate("full")}
     updateBanner();renderRoom();
   },()=>{}));
   RM.unsubs.push(f.fs.onSnapshot(f.fs.collection(f.db,"rooms",id,"members"),qs=>{
