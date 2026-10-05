@@ -1,81 +1,100 @@
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+name: Build Android APK
 
-    // Each person's profile. Anyone signed in can read; only the owner can write.
-    match /users/{uid} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
-                    && request.auth.uid == uid
-                    && get(/databases/$(database)/documents/accounts/$(request.resource.data.accountNo)).data.uid == request.auth.uid;
-      allow update: if request.auth != null
-                    && request.auth.uid == uid
-                    && request.resource.data.accountNo == resource.data.accountNo;
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
 
-      // Open play history: only the owner can read or write their own entries.
-      match /history/{entryId} {
-        allow read, create, update: if request.auth != null && request.auth.uid == uid;
-      }
-    }
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
 
-    // Account numbers are claimed once and can never be taken or changed.
-    match /accounts/{no} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-    }
+      - name: Check required files
+        run: |
+          for f in www/index.html icon.png make_icons.py capacitor.config.json package.json debug.keystore; do
+            test -f "$f" || { echo "Missing file: $f"; exit 1; }
+          done
 
-    // App settings such as the latest build number. Anyone can read; nobody can write from the app.
-    // (Edit these documents in the Firebase console.)
-    match /config/{doc} {
-      allow read: if true;
-      allow write: if false;
-    }
+      - name: Stamp the build number into the app
+        run: |
+          sed -i "s/const APP_BUILD=[0-9]*;/const APP_BUILD=${{ github.run_number }};/" www/index.html
+          grep -q "const APP_BUILD=${{ github.run_number }};" www/index.html || { echo "Could not stamp APP_BUILD in www/index.html"; exit 1; }
+          grep -o "const APP_BUILD=[0-9]*" www/index.html
 
-    // Rooms. Only the host can change the session, close or delete the room.
-    match /rooms/{roomId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
-                    && request.resource.data.hostUid == request.auth.uid;
-      allow update: if request.auth != null
-                    && resource.data.hostUid == request.auth.uid
-                    && request.resource.data.hostUid == resource.data.hostUid;
-      allow delete: if request.auth != null
-                    && resource.data.hostUid == request.auth.uid;
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      // Members: people can add or remove only themselves; the host can remove anyone.
-      match /members/{memberUid} {
-        allow read: if request.auth != null;
-        allow create, update: if request.auth != null && request.auth.uid == memberUid;
-        allow delete: if request.auth != null
-                      && (request.auth.uid == memberUid
-                          || get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid);
-      }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-      // Calls: only the host can call a player. The called player can only mark it as answered.
-      match /calls/{callUid} {
-        allow read: if request.auth != null
-                    && (request.auth.uid == callUid
-                        || get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid);
-        allow create, update, delete: if request.auth != null
-                    && get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid;
-        allow update: if request.auth != null
-                    && request.auth.uid == callUid
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ackAt']);
-      }
+      - name: Install Capacitor
+        run: npm install
 
-      // Chat: only people who joined the room can read or write. Host can delete messages.
-      match /messages/{msgId} {
-        allow read: if request.auth != null
-                    && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
-        allow create: if request.auth != null
-                      && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
-                      && request.resource.data.uid == request.auth.uid
-                      && request.resource.data.text is string
-                      && request.resource.data.text.size() > 0
-                      && request.resource.data.text.size() <= 300;
-        allow delete: if request.auth != null
-                      && get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid;
-      }
-    }
-  }
-}
+      - name: Create Android project
+        run: npx cap add android
+
+      - name: Make launcher icons
+        run: |
+          pip install pillow
+          python3 make_icons.py android/app/src/main/res
+
+      - name: Allow camera (for avatar photos)
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>#' "$M"
+          grep -n "CAMERA" "$M"
+
+      - name: Set version number
+        run: |
+          G=android/app/build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$G"
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" "$G"
+          grep -n -E "versionCode|versionName" "$G"
+
+      - name: Use the fixed signing key
+        run: |
+          mkdir -p ~/.android
+          cp debug.keystore ~/.android/debug.keystore
+
+      - name: Sync web files
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Verify signing key and version
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          BT=$(ls -d "$SDK"/build-tools/* | sort -V | tail -1)
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          WANT=$(keytool -list -v -keystore debug.keystore -storepass android | grep -m1 "SHA256:" | sed 's/.*SHA256: *//' | tr -d ':' | tr 'A-F' 'a-f')
+          GOT=$("$BT/apksigner" verify --print-certs "$APK" | grep -m1 "certificate SHA-256 digest" | sed 's/.*: *//' | tr 'A-F' 'a-f')
+          PKG=$("$BT/aapt2" dump badging "$APK" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)
+          VC=$("$BT/aapt2" dump badging "$APK" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p" | head -1)
+          {
+            echo "### APK check"
+            echo "- Package: \`$PKG\`"
+            echo "- versionCode: \`$VC\` (build ${{ github.run_number }})"
+            echo "- Signing key SHA-256: \`$GOT\`"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          [ -n "$WANT" ] && [ "$GOT" = "$WANT" ] || { echo "::error::APK is NOT signed with debug.keystore (wanted $WANT, got $GOT). Phones would refuse to update."; exit 1; }
+          [ "$VC" = "${{ github.run_number }}" ] || { echo "::error::versionCode is $VC, expected ${{ github.run_number }}."; exit 1; }
+          [ "$PKG" = "com.openplay.manager" ] || { echo "::error::Package name is $PKG."; exit 1; }
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk WataPickle-build${{ github.run_number }}.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: watapickle-apk
+          path: WataPickle-build${{ github.run_number }}.apk
+          if-no-files-found: error
