@@ -86,6 +86,14 @@ button.big{width:100%;padding:14px;font-size:1.05rem}
 .etxt{flex:1;min-width:0;line-height:1.15;font-size:.82rem}
 .etxt span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ent .tb{margin-left:auto;flex:none}
+.tpod{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end;margin:10px 0}
+.tcol{display:flex;flex-direction:column;align-items:center;min-width:0}
+.tp{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;min-width:0;flex-wrap:wrap}
+.tp .etxt{flex:none;text-align:left}.tp .etxt span{max-width:84px}
+.tstep{width:100%;border-radius:10px 10px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-size:1.5rem;font-weight:800;color:#0a1430}
+.tstep.p1{height:84px;background:linear-gradient(#ffd966,#f5c542)}
+.tstep.p2{height:62px;background:linear-gradient(#eef2fb,#b9c3dc)}
+.tstep.p3{height:46px;background:linear-gradient(#e6a97a,#c07f4c)}
 .champ{background:var(--a);border:1.5px solid var(--acc);border-radius:12px;padding:10px;margin:10px 0;text-align:center;font-weight:800}
 .chrow{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:6px;font-weight:700}
 .chrow .etxt{flex:none;font-size:1rem}
@@ -684,12 +692,14 @@ arm("endplay","Tap again to end open play",endPlay);
 arm("newplay","Tap again to start fresh",resetRounds);
 arm("reset","Tap again to reset",resetRounds);
 arm("clearall","Tap again to delete all",()=>{S.players=[];S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.uid=1;S.ended=false;save();render()});
-const TS={mode:1,form:"bal",seed:"rating",ex:{},name:""};
+const TS={kind:"ko",mode:1,form:"bal",seed:"rating",ex:{},name:"",rounds:4,courts:2,pairs:[],pick:null};
+const ord=n=>n+(["th","st","nd","rd"][(n%100>10&&n%100<14)?0:(n%10<4?n%10:0)]);
+const kk2=(a,b)=>a<b?a+"-"+b:b+"-"+a;
 function buildBracket(n){
   let n2=1;while(n2<n)n2*=2;
-  let ord=[1,2];for(let z=4;z<=n2;z*=2){const nx=[];ord.forEach(x=>{nx.push(x,z+1-x)});ord=nx}
+  let od=[1,2];for(let z=4;z<=n2;z*=2){const nx=[];od.forEach(x=>{nx.push(x,z+1-x)});od=nx}
   const r0=[];
-  for(let i=0;i<ord.length;i+=2){const a=ord[i]-1,b=ord[i+1]-1;r0.push({a:a<n?a:null,b:b<n?b:null,w:null})}
+  for(let i=0;i<od.length;i+=2){const a=od[i]-1,b=od[i+1]-1;r0.push({a:a<n?a:null,b:b<n?b:null,w:null})}
   const rounds=[r0];let c=r0.length;
   while(c>1){c/=2;rounds.push(Array.from({length:c},()=>({a:null,b:null,w:null})))}
   return rounds;
@@ -707,25 +717,93 @@ function tEnt(e,size){
   const pls=e.pl.map(q=>S.players.find(p=>p.id===q.id)||{name:q.name,av:null});
   return `<span class="avs">${pls.map(p=>av(p,size)).join("")}</span><span class="etxt">${e.pl.map(q=>`<span>${esc(short(q.name))}</span>`).join("")}</span>${badge(e.rt)}`;
 }
+// ---- knockout final placings
+function koPlaces(T){
+  const R=T.rounds.length,f=T.rounds[R-1][0];
+  if(f.w==null)return null;
+  const lose=m=>m.w===m.a?m.b:m.a,out=[{e:f.w,rank:1,label:"Champion"},{e:lose(f),rank:2,label:"Runner-up"}];
+  for(let r=R-2;r>=0;r--){
+    const k=R-r,lo=Math.pow(2,k-1)+1,hi=Math.pow(2,k);
+    T.rounds[r].forEach(m=>{if(m.w==null||m.a==null||m.b==null)return;out.push({e:lose(m),rank:lo,label:ord(lo)+"–"+ord(hi)})});
+  }
+  return out;
+}
+// ---- open play tournament
+function oInfo(T,id){return T.pl.find(q=>q.id===id)||{id,name:"?",rt:3}}
+function oEnt(T,ids){const pl=ids.map(id=>oInfo(T,id));return {pl,rt:pl.reduce((a,q)=>a+q.rt,0)/pl.length}}
+function openStats(T){
+  const m={};T.pl.forEach(q=>{m[q.id]={q,w:0,l:0}});
+  T.rounds.forEach(r=>r.courts.forEach(c=>{
+    if(!c.win)return;const aw=c.win==="a";
+    c.A.forEach(id=>{const x=m[id];if(x)aw?x.w++:x.l++});
+    c.B.forEach(id=>{const x=m[id];if(x)aw?x.l++:x.w++});
+  }));
+  const rate=x=>{const g=x.w+x.l;return g?x.w/g:-1};
+  return Object.values(m).sort((a,b)=>rate(b)-rate(a)||b.w-a.w||b.q.rt-a.q.rt);
+}
+function openNextRound(T){
+  const per=T.mode===2?4:2,nc=Math.min(T.nCourts,Math.floor(T.pl.length/per)),need=nc*per;
+  const played={},sat={},part={};
+  T.pl.forEach(q=>{played[q.id]=0;sat[q.id]=0});
+  T.rounds.forEach(r=>{
+    r.courts.forEach(c=>{
+      [...c.A,...c.B].forEach(id=>played[id]++);
+      if(T.mode===2){part[kk2(...c.A)]=(part[kk2(...c.A)]||0)+1;part[kk2(...c.B)]=(part[kk2(...c.B)]||0)+1}
+    });
+    T.pl.forEach(q=>{if(r.bench.includes(q.id))sat[q.id]++;else sat[q.id]=0});
+  });
+  const order=shuffle(T.pl).sort((a,b)=>played[a.id]-played[b.id]||sat[b.id]-sat[a.id]);
+  const active=order.slice(0,need),bench=order.slice(need).map(q=>q.id),R={};
+  active.forEach(q=>{R[q.id]=q.rt+(Math.random()-.5)*.3});
+  const sorted=active.map(q=>q.id).sort((a,b)=>R[b]-R[a]),courts=[];
+  for(let c=0;c<nc;c++){
+    const g=sorted.slice(c*per,c*per+per);
+    if(T.mode===2){
+      const opts=[[[g[0],g[3]],[g[1],g[2]]],[[g[0],g[2]],[g[1],g[3]]],[[g[0],g[1]],[g[2],g[3]]]];
+      const av2=t=>(R[t[0]]+R[t[1]])/2;
+      const cost=o=>Math.abs(av2(o[0])-av2(o[1]))+0.5*((part[kk2(...o[0])]||0)+(part[kk2(...o[1])]||0));
+      const o=opts.reduce((b,x)=>cost(x)<cost(b)?x:b);
+      courts.push({A:o[0],B:o[1],win:null});
+    }else courts.push({A:[g[0]],B:[g[1]],win:null});
+  }
+  T.rounds.push({courts,bench});
+}
+function openDone(T){
+  const last=T.rounds[T.rounds.length-1];
+  return T.rounds.length>=T.maxRounds&&last.courts.every(c=>c.win);
+}
 function makeTournament(){
-  const R=ratings(),pool=S.players.filter(p=>!p.hold&&!TS.ex[p.id]),dbl=TS.mode===2;
-  if(dbl?pool.length<4:pool.length<2){toast(dbl?"Pick at least 4 players for doubles.":"Pick at least 2 players.");return}
-  if(dbl&&pool.length%2){toast("Pick an even number of players for doubles.");return}
-  const ps=pool.map(p=>({id:p.id,name:p.name,rt:R[p.id]??p.rt??3}));
+  const R=ratings(),dbl=TS.mode===2,nm=TS.name.trim()||"Tournament";
+  if(TS.kind==="open"){
+    const pool=S.players.filter(p=>!p.hold&&!TS.ex[p.id]),per=dbl?4:2;
+    if(pool.length<per){toast("Pick at least "+per+" players.");return}
+    const T={kind:"open",name:nm,mode:TS.mode,pl:pool.map(p=>({id:p.id,name:p.name,rt:R[p.id]??p.rt??3})),maxRounds:TS.rounds,nCourts:TS.courts,rounds:[],created:Date.now()};
+    openNextRound(T);S.tour=T;save();render();return;
+  }
   let ents=[];
-  if(dbl){
-    if(TS.form==="bal"){
-      const q=ps.slice().sort((a,b)=>(b.rt-a.rt)||(Math.random()-.5));
-      for(let i=0;i<q.length/2;i++){const a=q[i],b=q[q.length-1-i];ents.push({pl:[a,b],rt:(a.rt+b.rt)/2})}
-    }else{
-      const q=shuffle(ps);
-      for(let i=0;i<q.length;i+=2)ents.push({pl:[q[i],q[i+1]],rt:(q[i].rt+q[i+1].rt)/2});
-    }
-  }else ents=ps.map(p=>({pl:[p],rt:p.rt}));
+  if(dbl&&TS.form==="pick"){
+    const info=id=>{const p=S.players.find(q=>q.id===id);return p&&!p.hold?{id,name:p.name,rt:R[id]??p.rt??3}:null};
+    TS.pairs.forEach(([a,b])=>{const x=info(a),y=info(b);if(x&&y)ents.push({pl:[x,y],rt:(x.rt+y.rt)/2})});
+    if(ents.length<2){toast("Make at least 2 teams.");return}
+  }else{
+    const pool=S.players.filter(p=>!p.hold&&!TS.ex[p.id]);
+    if(dbl?pool.length<4:pool.length<2){toast(dbl?"Pick at least 4 players for doubles.":"Pick at least 2 players.");return}
+    if(dbl&&pool.length%2){toast("Pick an even number of players for doubles.");return}
+    const ps=pool.map(p=>({id:p.id,name:p.name,rt:R[p.id]??p.rt??3}));
+    if(dbl){
+      if(TS.form==="bal"){
+        const q=ps.slice().sort((a,b)=>(b.rt-a.rt)||(Math.random()-.5));
+        for(let i=0;i<q.length/2;i++){const a=q[i],b=q[q.length-1-i];ents.push({pl:[a,b],rt:(a.rt+b.rt)/2})}
+      }else{
+        const q=shuffle(ps);
+        for(let i=0;i<q.length;i+=2)ents.push({pl:[q[i],q[i+1]],rt:(q[i].rt+q[i+1].rt)/2});
+      }
+    }else ents=ps.map(p=>({pl:[p],rt:p.rt}));
+  }
   ents=TS.seed==="rating"?ents.slice().sort((a,b)=>(b.rt-a.rt)||(Math.random()-.5)):shuffle(ents);
   ents.forEach((e,i)=>{e.seed=i+1});
-  const T={name:TS.name.trim()||"Tournament",mode:TS.mode,ents,rounds:buildBracket(ents.length),champ:null,created:Date.now()};
-  recompute(T);S.tour=T;save();render();
+  const T={kind:"ko",name:nm,mode:TS.mode,ents,rounds:buildBracket(ents.length),champ:null,created:Date.now()};
+  recompute(T);S.tour=T;TS.pairs=[];TS.pick=null;save();render();
 }
 function setWin(r,i,side){
   const T=S.tour,m=T&&T.rounds[r]&&T.rounds[r][i];
@@ -738,21 +816,69 @@ function setWin(r,i,side){
   if(cnt()<exp)toast("Later rounds that depended on this match were reset.");
   save();render();
 }
+function setOpenWin(ci,side){
+  const T=S.tour,r=T&&T.rounds[T.rounds.length-1],c=r&&r.courts[ci];
+  if(!c)return;
+  c.win=c.win===side?null:side;save();render();
+}
+function tpod(first,second,third){
+  const col=(arr,cls,n)=>`<div class="tcol">${arr.map(e=>`<div class="tp">${tEnt(e,30)}</div>`).join("")}<div class="tstep ${cls}">${n}</div></div>`;
+  return `<div class="tpod">${col(second,"p2",2)}${col(first,"p1",1)}${col(third,"p3",3)}</div>`;
+}
+const seg=(k,opts,cur)=>`<div class="seg2">${opts.map(([v,l])=>`<button data-k="${k}" data-v="${v}" class="${String(cur)===String(v)?"on":""}">${l}</button>`).join("")}</div>`;
+const stp=(k,label,val)=>`<div class="lbl"><span>${label}</span><div class="stepper"><button data-k="${k}" data-v="-1">−</button><span>${val}</span><button data-k="${k}" data-v="1">+</button></div></div>`;
 function renderTour(){
   const c=$("tourcard"),T=S.tour,scroll=c.querySelector(".bracket"),sl=scroll?scroll.scrollLeft:0;
   if(!T){
-    const pl=S.players.filter(p=>!p.hold);
-    c.innerHTML=`<h2>Tournament · Knockout</h2>
-<div class="empty">Pick the players, and the app seeds the bracket by rating so the strongest meet late. Winners advance each round.</div>
-<input id="tname" placeholder="Tournament name" maxlength="30" value="${esc(TS.name)}" style="margin-top:10px;width:100%;flex:none">
-<div class="lab">Format</div>
-<div class="seg2"><button data-k="mode" data-v="1" class="${TS.mode===1?"on":""}">Singles</button><button data-k="mode" data-v="2" class="${TS.mode===2?"on":""}">Doubles</button></div>
-${TS.mode===2?`<div class="lab">Teams</div><div class="seg2"><button data-k="form" data-v="bal" class="${TS.form==="bal"?"on":""}">Balanced by rating</button><button data-k="form" data-v="rnd" class="${TS.form==="rnd"?"on":""}">Random</button></div>`:""}
-<div class="lab">Seeding</div>
-<div class="seg2"><button data-k="seed" data-v="rating" class="${TS.seed==="rating"?"on":""}">By rating</button><button data-k="seed" data-v="rnd" class="${TS.seed==="rnd"?"on":""}">Random draw</button></div>
-<div class="row" style="justify-content:space-between;margin-top:6px"><span class="lab" style="margin:0">Players (${pl.filter(p=>!TS.ex[p.id]).length} of ${pl.length} selected)</span><span class="row"><button class="sk" data-k="all">All</button><button class="sk" data-k="none">None</button></span></div>
-${pl.length?`<div class="sels">${pl.map(p=>`<button class="sel ${TS.ex[p.id]?"":"on"}" data-sp="${p.id}">${av(p,26)}<span class="tn">${esc(p.name)}</span>${badge(RT[p.id]??3)}</button>`).join("")}</div>`:`<div class="empty" style="margin:10px 0">Add players in the Players tab first.</div>`}
-<button class="p big" id="mkt">Create bracket</button>`;
+    const pl=S.players.filter(p=>!p.hold),ko=TS.kind==="ko",pick=ko&&TS.mode===2&&TS.form==="pick";
+    const unp=pl.filter(p=>!TS.pairs.some(pr=>pr.includes(p.id)));
+    const pinfo=id=>S.players.find(p=>p.id===id)||{name:"?",av:null};
+    let body="";
+    if(pick){
+      body=`<div class="lab">Teams (${TS.pairs.length})</div>${TS.pairs.map((pr,i)=>`<div class="mrow"><span class="pn">${av(pinfo(pr[0]),24)}${av(pinfo(pr[1]),24)}<span class="tn" style="margin-left:6px">${esc(short(pinfo(pr[0]).name))} &amp; ${esc(short(pinfo(pr[1]).name))}</span></span><button class="sk" data-k="unpair" data-v="${i}">Remove</button></div>`).join("")||'<div class="empty" style="margin:6px 0">Tap two players to make a team.</div>'}
+<div class="lab">${TS.pick?"Now tap the partner":"Tap a player, then tap their partner"}</div>
+${unp.length?`<div class="sels">${unp.map(p=>`<button class="sel ${TS.pick===p.id?"on":""}" data-pk="${p.id}" style="opacity:1">${av(p,26)}<span class="tn">${esc(p.name)}</span>${badge(RT[p.id]??3)}</button>`).join("")}</div>`:'<div class="empty" style="margin:8px 0">Everyone is on a team.</div>'}`;
+    }else{
+      body=`<div class="row" style="justify-content:space-between;margin-top:6px"><span class="lab" style="margin:0">Players (${pl.filter(p=>!TS.ex[p.id]).length} of ${pl.length} selected)</span><span class="row"><button class="sk" data-k="all">All</button><button class="sk" data-k="none">None</button></span></div>
+${pl.length?`<div class="sels">${pl.map(p=>`<button class="sel ${TS.ex[p.id]?"":"on"}" data-sp="${p.id}">${av(p,26)}<span class="tn">${esc(p.name)}</span>${badge(RT[p.id]??3)}</button>`).join("")}</div>`:'<div class="empty" style="margin:10px 0">Add players in the Players tab first.</div>'}`;
+    }
+    c.innerHTML=`<h2>Tournament</h2>
+<input id="tname" placeholder="Tournament name" maxlength="30" value="${esc(TS.name)}" style="width:100%;flex:none">
+<div class="lab">Type</div>
+${seg("kind",[["ko","Knockout"],["open","Open play"]],TS.kind)}
+<div class="empty" style="margin:-6px 0 8px">${ko?"Bracket where the loser is out. Winners advance to the final.":"Everyone plays a set number of rounds with changing partners. The best record wins."}</div>
+${ko?`<div class="lab">Format</div>${seg("mode",[[1,"Singles"],[2,"Fixed doubles"]],TS.mode)}
+${TS.mode===2?`<div class="lab">Teams</div>${seg("form",[["bal","Balanced"],["rnd","Random"],["pick","Choose pairs"]],TS.form)}`:""}
+<div class="lab">Seeding</div>${seg("seed",[["rating","By rating"],["rnd","Random draw"]],TS.seed)}`
+:`<div class="lab">Game type</div>${seg("mode",[[2,"Doubles"],[1,"Singles"]],TS.mode)}
+${stp("rounds","Rounds",TS.rounds)}${stp("courts","Courts",TS.courts)}`}
+${body}
+<button class="p big" id="mkt">Create ${ko?"bracket":"tournament"}</button>`;
+    return;
+  }
+  const ko=T.kind!=="open";
+  if(!ko){
+    const per=T.mode===2?4:2,cur=T.rounds[T.rounds.length-1],decided=cur.courts.every(x=>x.win),done=openDone(T),st=openStats(T);
+    const sh=id=>esc(short(oInfo(T,id).name));
+    const courts=cur.courts.map((ct,i)=>{
+      const row=(ids,side)=>`<button class="ent ${ct.win?(ct.win===side?"win":"lose"):""}" data-oc="${i}" data-os="${side}">${tEnt(oEnt(T,ids),22)}</button>`;
+      return `<div class="mc" style="margin-bottom:8px"><div class="mh">Court ${i+1}</div>${row(ct.A,"a")}${row(ct.B,"b")}</div>`;
+    }).join("");
+    const bench=cur.bench.length?`<div class="empty" style="margin:4px 0 8px"><strong>Sitting out:</strong> ${cur.bench.map(sh).join(", ")}</div>`:"";
+    const prev=T.rounds.slice(0,-1).map((r,ri)=>`<div class="hrow"><b>Round ${ri+1}</b>${r.courts.map((ct,i)=>{const A=ct.A.map(sh).join(" &amp; "),B=ct.B.map(sh).join(" &amp; ");return `<small>Court ${i+1}: ${ct.win==="a"?"<b style=\"display:inline;color:var(--ink)\">"+A+"</b> beat "+B:ct.win==="b"?"<b style=\"display:inline;color:var(--ink)\">"+B+"</b> beat "+A:A+" vs "+B}</small>`}).join("")}</div>`).reverse().join("");
+    const top=st.filter(x=>x.w+x.l>0);
+    const E=x=>x?[{pl:[x.q],rt:x.q.rt}]:[];
+    const rows=st.map((x,i)=>{const g=x.w+x.l;return `<tr><td>${g?i+1:"–"}</td><td><span class="pn">${av(S.players.find(p=>p.id===x.q.id)||{name:x.q.name},22)}<span>${esc(x.q.name)}</span></span></td><td>${badge(x.q.rt)}</td><td>${x.w}-${x.l}</td><td>${g?Math.round(100*x.w/g)+"%":"–"}</td></tr>`}).join("");
+    c.innerHTML=`<h2>${esc(T.name)}</h2>
+<div class="empty">Open play · ${T.mode===2?"doubles, new partners each round":"singles"} · ${done?"finished":"Round "+T.rounds.length+" of "+T.maxRounds}</div>
+${done&&top[0]?`<div class="champ">🏆 Tournament winner<div class="chrow">${tEnt(E(top[0])[0],30)}</div></div>`:""}
+<div class="lab">${done?"Last round":"Round "+T.rounds.length+" · tap the winning side"}</div>
+${courts}${bench}
+${done?"":`<button class="p big" id="nextr">${T.rounds.length>=T.maxRounds?"Finish":"Next round"}${decided?"":" (enter winners first)"}</button>`}
+${top.length?`<h2 style="margin-top:16px">${done?"Final ranking":"Standings"}</h2>${done?tpod(E(top[0]),E(top[1]),E(top[2])):""}
+<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>Rtg</th><th>W-L</th><th>Win%</th></tr></thead><tbody>${rows}</tbody></table></div>`:""}
+${prev?`<h2 style="margin-top:16px">Previous rounds</h2>${prev}`:""}
+<div class="row" style="margin-top:14px"><button id="rstt">Reset tournament</button></div>`;
     return;
   }
   const R=T.rounds.length;let n=0;
@@ -762,23 +888,48 @@ ${pl.length?`<div class="sels">${pl.map(p=>`<button class="sel ${TS.ex[p.id]?"":
     return `<button class="ent ${cls}" data-r="${r}" data-i="${i}" data-s="${side}" ${can?"":"disabled"}><span class="sd">${e.seed}</span>${tEnt(e,22)}</button>`;
   };
   const cols=T.rounds.map((rd,r)=>`<div class="bcol"><div class="bt">${rname(r,R)}</div><div class="bm">${rd.map((m,i)=>{n++;return `<div class="mc"><div class="mh">Match ${n}</div>${row(m.a,"a",m,r,i)}${row(m.b,"b",m,r,i)}</div>`}).join("")}</div></div>`).join("");
+  const pl=T.champ!=null?koPlaces(T):null;
+  let final="";
+  if(pl){
+    const E=r=>pl.filter(x=>x.rank===r).map(x=>T.ents[x.e]);
+    final=`<h2 style="margin-top:16px">Final ranking</h2>${tpod(E(1),E(2),E(3))}
+<div class="tw"><table><thead><tr><th>Place</th><th>${T.mode===2?"Team":"Player"}</th></tr></thead><tbody>${pl.map(x=>{const e=T.ents[x.e];return `<tr><td style="white-space:nowrap">${x.label}</td><td><span class="pn">${e.pl.map(q=>av(S.players.find(p=>p.id===q.id)||{name:q.name},22)).join("")}<span style="margin-left:6px">${e.pl.map(q=>esc(q.name)).join(" &amp; ")}</span></span></td></tr>`}).join("")}</tbody></table></div>`;
+  }
   c.innerHTML=`<h2>${esc(T.name)}</h2>
-<div class="empty">${T.mode===2?"Doubles":"Singles"} · ${T.ents.length} ${T.mode===2?"teams":"players"} · knockout</div>
+<div class="empty">${T.mode===2?"Fixed doubles":"Singles"} · ${T.ents.length} ${T.mode===2?"teams":"players"} · knockout</div>
 ${T.champ!=null?`<div class="champ">🏆 Champion<div class="chrow">${tEnt(T.ents[T.champ],30)}</div></div>`:`<div class="empty" style="margin-top:6px">Tap the winner of each match. Tap again to undo.</div>`}
-<div class="bracket">${cols}</div>
-<div class="row"><button id="rstt">Reset tournament</button></div>`;
+<div class="bracket">${cols}</div>${final}
+<div class="row" style="margin-top:14px"><button id="rstt">Reset tournament</button></div>`;
   const b=c.querySelector(".bracket");if(b)b.scrollLeft=sl;
 }
 $("tourcard").onclick=e=>{
   const t=e.target.closest("button");if(!t)return;
   if(t.dataset.r!==undefined){setWin(+t.dataset.r,+t.dataset.i,t.dataset.s);return}
+  if(t.dataset.oc!==undefined){setOpenWin(+t.dataset.oc,t.dataset.os);return}
   if(t.dataset.sp){TS.ex[t.dataset.sp]=!TS.ex[t.dataset.sp];renderTour();return}
+  if(t.dataset.pk){
+    const id=+t.dataset.pk;
+    if(TS.pick==null)TS.pick=id;else if(TS.pick===id)TS.pick=null;else{TS.pairs.push([TS.pick,id]);TS.pick=null}
+    renderTour();return;
+  }
   if(t.dataset.k){
     const k=t.dataset.k,v=t.dataset.v;
-    if(k==="all")TS.ex={};else if(k==="none")S.players.forEach(p=>{TS.ex[p.id]=true});else TS[k]=k==="mode"?+v:v;
+    if(k==="all")TS.ex={};
+    else if(k==="none")S.players.forEach(p=>{TS.ex[p.id]=true});
+    else if(k==="unpair")TS.pairs.splice(+v,1);
+    else if(k==="rounds")TS.rounds=Math.max(2,Math.min(12,TS.rounds+(+v)));
+    else if(k==="courts")TS.courts=Math.max(1,Math.min(8,TS.courts+(+v)));
+    else if(k==="kind"){TS.kind=v;TS.mode=v==="open"?2:1}
+    else TS[k]=k==="mode"?+v:v;
     renderTour();return;
   }
   if(t.id==="mkt")makeTournament();
+  else if(t.id==="nextr"){
+    const T=S.tour,last=T.rounds[T.rounds.length-1];
+    if(!last.courts.every(x=>x.win)){toast("Enter the winner of every court first.");return}
+    if(T.rounds.length<T.maxRounds)openNextRound(T);
+    save();render();
+  }
   else if(t.id==="rstt"){
     if(t.dataset.arm){S.tour=null;save();render();return}
     t.dataset.arm="1";t.textContent="Tap again to reset";t.classList.add("danger");
