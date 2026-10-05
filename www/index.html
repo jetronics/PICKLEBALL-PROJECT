@@ -222,6 +222,15 @@ button.pnm{cursor:pointer}
 .pfr,.pfw{grid-column:1/-1}
 .pflock{background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:14px;margin-bottom:12px;color:var(--mute);line-height:1.4}
 .tgl{cursor:pointer;line-height:1.3;font-size:.9rem}
+.tolo{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;margin:0 0 6px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+.tolo.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc);background:rgba(245,197,66,.1)}
+.tolo b{display:block;font-size:.95rem}.tolo small{display:block;color:var(--mute);font-weight:400}
+.tolo .tn{flex:none;width:24px;height:24px;border-radius:50%;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800}
+.tolo.on .tn{background:var(--acc);color:var(--accink)}
+.fch{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.fch button{padding:5px 10px;border-radius:999px;font-size:.8rem}
+.fch button.on{background:var(--acc);color:var(--accink);font-weight:700}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.dgrid .pft{grid-column:span 1}
 .tgl input{flex:none;width:20px;height:20px;padding:0;accent-color:var(--acc)}
 @media (prefers-reduced-motion:reduce){.sparks span{animation:none;opacity:.7}.pav.a1 .av,.hn,.champ::after{animation:none!important}.pwrap.pop .pk,.pwrap.pop .horn,.pwrap.pop .note{animation:none!important}.horn,.note{display:none}}
 
@@ -412,6 +421,7 @@ button.pnm{cursor:pointer}
 <div class="row" id="avraterow" style="margin-top:12px"><label for="avrate">Rating</label><input id="avrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" style="flex:0 0 80px"><span id="avlvl" class="empty"></span></div>
 <div class="lab" style="margin-top:12px">Gender</div>
 <div class="seg2" id="avgender" style="margin:6px 0 4px"><button data-g="m">♂ Male</button><button data-g="f">♀ Female</button><button data-g="h">Hidden</button></div>
+<div id="avtolwrap"><div class="lab" style="margin-top:12px">Match tolerance</div><select id="avtol" style="width:100%;margin:6px 0 4px"><option value="1">1 · 🎯 Strict: very close skill levels only</option><option value="2">2 · 🏆 Competitive: favors closely matched opponents</option><option value="3">3 · ⚖️ Balanced: fairness + finding a match</option><option value="4">4 · 🤝 Flexible: wider skill difference allowed</option><option value="5">5 · 🎉 Open: match with a broad range of players</option></select></div>
 <label class="tgl row" style="margin:8px 0 0;flex-wrap:nowrap;gap:10px"><input type="checkbox" id="avhide"><span>Hide rating &amp; stats when this avatar is tapped</span></label>
 <div class="egrid" id="egrid"></div>
 <div class="row"><button id="avshot">📸 Take photo</button><button id="avup">🖼 Choose photo</button><button id="avini">Initials</button></div>
@@ -480,7 +490,7 @@ function openAv(id){avId=id;renderAv();$("avmodal").hidden=false}
 function renderAv(){
   const p=avP();if(!p)return;const me=avId==="me";
   $("avprev").innerHTML=av(p,48);$("avname").textContent=p.name;
-  $("avraterow").hidden=me;
+  $("avraterow").hidden=me;$("avtolwrap").hidden=me;if(!me)$("avtol").value=String(p.tol||3);
   {const gg=p.g||"h";document.querySelectorAll("#avgender [data-g]").forEach(b=>b.classList.toggle("on",b.dataset.g===gg));$("avhide").checked=!!p.hr}
   if(!me){$("avrate").value=(p.rt??3).toFixed(1);$("avlvl").textContent="Now "+(RT[p.id]??3).toFixed(2)+" · Rank "+tier(RT[p.id]??3)+" · "+level(RT[p.id]??3)}
   $("egrid").innerHTML=EMOJI.map(e=>`<button data-e="${e}" class="${p.av&&p.av.t==="e"&&p.av.v===e?"on":""}">${e}</button>`).join("");
@@ -501,6 +511,35 @@ function toggleHold(id){
   }else{p.hold=true;p.skip=null}
   save();render();
 }
+const TOLS=[null,
+ {n:1,i:"🎯",t:"Strict",d:"Very close skill levels only"},
+ {n:2,i:"🏆",t:"Competitive",d:"Favors closely matched opponents"},
+ {n:3,i:"⚖️",t:"Balanced",d:"Fairness + finding a match"},
+ {n:4,i:"🤝",t:"Flexible",d:"Wider skill difference allowed"},
+ {n:5,i:"🎉",t:"Open",d:"Match with a broad range of players"}];
+const tolLbl=n=>{const t=TOLS[n]||TOLS[3];return t.i+" "+t.t};
+const TOL_SPREAD=[0,0.4,0.7,1.1,1.7,9]; // widest rating gap on a court that each level is comfortable with
+const tolOf=id=>{const p=S.players.find(x=>x.id===id);return p&&p.tol>=1&&p.tol<=5?p.tol:3};
+function groupCost(ids,R){
+  const v=ids.map(id=>R[id]??3),spread=Math.max(...v)-Math.min(...v),lim=Math.min(...ids.map(id=>TOL_SPREAD[tolOf(id)]));
+  return Math.max(0,spread-lim)*8+spread*0.25;
+}
+const anyTol=ids=>ids.some(id=>tolOf(id)!==3);
+// choose `per` players from the front of the fairness queue, preferring a group everybody is comfortable with
+function pickGroup(q,per,R){
+  const base=q.slice(0,per),cand=q.slice(0,Math.min(q.length,per+2));
+  if(q.length<=per||!anyTol(cand.map(p=>p.id)))return base;
+  let best=base,bc=Infinity;
+  const go=(start,cur)=>{
+    if(cur.length===per){
+      const c=groupCost(cur.map(i=>cand[i].id),R)+0.08*cur.reduce((a,b)=>a+b,0);
+      if(c<bc){bc=c;best=cur.map(i=>cand[i])}return;
+    }
+    for(let i=start;i<cand.length;i++)go(i+1,cur.concat(i));
+  };
+  go(0,[]);
+  return best;
+}
 function generate(){
   const per=S.mode===2?4:2;
   const pool=S.players.filter(p=>!p.hold);
@@ -514,9 +553,21 @@ function generate(){
   const R=ratings(false);
   active.forEach(id=>{R[id]+=(Math.random()-.5)*0.16});
   const sorted=active.slice().sort((a,b)=>R[b]-R[a]);
-  const best=[];
+  const best=[],groups=[];
+  for(let c=0;c<maxCourts;c++)groups.push(sorted.slice(c*per,c*per+per));
+  if(maxCourts>1&&anyTol(active)){ // swap players between courts when that suits everybody's match tolerance better
+    const tot=()=>groups.reduce((a,g)=>a+groupCost(g,R),0);
+    let cur=tot();
+    for(let it=0;it<500;it++){
+      const a=Math.floor(Math.random()*maxCourts),b=Math.floor(Math.random()*maxCourts);if(a===b)continue;
+      const i=Math.floor(Math.random()*per),j=Math.floor(Math.random()*per);
+      [groups[a][i],groups[b][j]]=[groups[b][j],groups[a][i]];
+      const c2=tot();
+      if(c2<cur-1e-9)cur=c2;else[groups[a][i],groups[b][j]]=[groups[b][j],groups[a][i]];
+    }
+  }
   for(let c=0;c<maxCourts;c++){
-    const g=sorted.slice(c*per,c*per+per);
+    const g=groups[c];
     if(S.mode===2){
       const opts=[[[g[0],g[3]],[g[1],g[2]]],[[g[0],g[2]],[g[1],g[3]]],[[g[0],g[1]],[g[2],g[3]]]];
       const av2=t=>(R[t[0]]+R[t[1]])/2;
@@ -672,7 +723,17 @@ function renderProfile(){
 <div class="pft"><small>Point difference</small><b>${g?(x.d>0?"+":"")+x.d:"–"}</b></div>
 ${tl?`<div class="pft pfw"><small>Tournament</small><b>${tl}</b></div>`:""}</div>`;
   }
-  $("pfbody").innerHTML=`<div class="pfhead">${av(p,64)}<div style="min-width:0"><div class="pfname">${esc(p.name)}</div><div class="pfg">${gtxt(p.g)}${p.hold?" · on hold":""}</div></div></div>${body}
+  let extra="";
+  if(!p.hr){
+    const mem=p.mid&&RM?RM.members.find(m=>m.uid===p.mid):null,tl=(mem&&mem.tol)||p.tol;
+    const bits=[];
+    if(tl)bits.push(`<div class="pft pfw"><small>Match tolerance</small><b>${esc(tolLbl(tl))}</b><small>${esc((TOLS[tl]||TOLS[3]).d)}</small></div>`);
+    if(mem&&mem.age!=null&&mem.age!=="")bits.push(`<div class="pft"><small>Age</small><b>${esc(mem.age)}</b></div>`);
+    if(mem&&mem.loc)bits.push(`<div class="pft"><small>Location</small><b>${esc(mem.loc)}</b></div>`);
+    if(mem&&mem.food)bits.push(`<div class="pft pfw"><small>Food preferences</small><b>${esc(mem.food)}</b></div>`);
+    if(bits.length)extra=`<div class="pfgrid" style="margin-top:8px">${bits.join("")}</div>`;
+  }
+  $("pfbody").innerHTML=`<div class="pfhead">${av(p,64)}<div style="min-width:0"><div class="pfname">${esc(p.name)}</div><div class="pfg">${gtxt(p.g)}${p.hold?" · on hold":""}</div></div></div>${body}${extra}
 <div class="row" style="justify-content:space-between;flex-wrap:nowrap">${ro?"<span></span>":`<button id="pfhide">${p.hr?"👁 Show rating":"🙈 Hide rating"}</button>`}<span class="row" style="flex-wrap:nowrap">${ro?"":'<button id="pfedit">Edit</button>'}<button class="p" id="pfclose">Done</button></span></div>`;
 }
 $("pfmodal").onclick=e=>{
@@ -738,7 +799,7 @@ function nextMatch(i){
   const nc={A:[],B:[],n,sa:null,sb:null,win:null};
   S.cur.courts[i]=nc; // placeholder so the finished match isn't counted twice
   const R=ratings(true);
-  const pick=queue(S.players.filter(p=>!p.hold&&!onCourt.has(p.id))).slice(0,per);
+  const pick=pickGroup(queue(S.players.filter(p=>!p.hold&&!onCourt.has(p.id))),per,R);
   S.players.forEach(p=>p.r=Math.random());
   pick.forEach(p=>{R[p.id]+=(Math.random()-.5)*.16});
   if(pick.length===per){
@@ -855,6 +916,7 @@ $("go").onclick=generate;
 $("egrid").onclick=e=>{const b=e.target.closest("[data-e]"),p=avP();if(!b||!p)return;p.av={t:"e",v:b.dataset.e};commitAv()};
 $("avrate").onchange=()=>{const p=avP();if(!p)return;p.rt=Math.round(clampR(parseFloat($("avrate").value))*100)/100;save();render();renderAv()};
 $("avgender").onclick=e=>{const b=e.target.closest("[data-g]"),p=avP();if(!b||!p)return;p.g=b.dataset.g;commitAv()};
+$("avtol").onchange=()=>{const p=avP();if(!p||avId==="me")return;p.tol=+$("avtol").value;commitAv()};
 $("avhide").onchange=()=>{const p=avP();if(!p)return;p.hr=$("avhide").checked;commitAv()};
 $("rate").oninput=()=>{{const v=clampR(parseFloat($("rate").value));$("lvl").textContent=tier(v)+" · "+level(v)}};
 $("avini").onclick=()=>{const p=avP();if(!p)return;p.av=null;commitAv()};
@@ -1418,12 +1480,12 @@ async function makeProfile(u,name){
     try{await f.fs.setDoc(f.fs.doc(f.db,"accounts",t),{uid:u.uid});no=t}
     catch(e){if(i===5||e.code!=="permission-denied")throw e}
   }
-  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now(),rating:3,startRating:3,games:0,avatar:null});
-  ME={uid:u.uid,email:u.email,name,acct:no,av:null,rating:3,games:0,hist:[]};
+  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now(),rating:3,startRating:3,games:0,avatar:null,age:null,loc:"",food:"",tol:3,share:false});
+  ME={uid:u.uid,email:u.email,name,acct:no,av:null,rating:3,games:0,hist:[],age:null,loc:"",food:"",tol:3,share:false};resetDraft();
 }
 async function loadProfile(u){
   const f=FB,snap=await f.fs.getDoc(f.fs.doc(f.db,"users",u.uid));
-  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo,av:d.avatar||null,rating:d.rating??3,games:d.games||0,hist:[]};loadHistory();return}
+  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo,av:d.avatar||null,rating:d.rating??3,games:d.games||0,hist:[],age:d.age??null,loc:d.loc||"",food:d.food||"",tol:d.tol>=1&&d.tol<=5?d.tol:3,share:!!d.share};resetDraft();loadHistory();return}
   await makeProfile(u,u.displayName||(u.email||"Player").split("@")[0]);
 }
 function openStart(view){
@@ -1495,6 +1557,47 @@ async function restoreNet(){
   }catch(e){}
   renderAcct();
 }
+const FOODS=["Vegetarian","Vegan","Halal","No pork","No seafood","No nuts","Gluten-free","Anything"];
+let DD={age:"",loc:"",food:""};
+function resetDraft(){DD={age:ME&&ME.age!=null?String(ME.age):"",loc:ME?ME.loc||"":"",food:ME?ME.food||"":""}}
+function foodSet(){return DD.food.split(",").map(x=>x.trim()).filter(Boolean)}
+function detailsHtml(){
+  const fs=foodSet().map(x=>x.toLowerCase());
+  const dirty=(DD.age!==(ME.age!=null?String(ME.age):"")||DD.loc!==(ME.loc||"")||DD.food!==(ME.food||""));
+  return `<h2 style="margin-top:14px">My details</h2>
+<div class="row" style="flex-wrap:nowrap"><div style="flex:0 0 90px"><label class="lab" for="dage" style="margin-top:0">Age</label><input id="dage" type="number" inputmode="numeric" min="5" max="99" placeholder="e.g. 28" value="${esc(DD.age)}" style="width:100%"></div><div style="flex:1;min-width:0"><label class="lab" for="dloc" style="margin-top:0">Location</label><input id="dloc" maxlength="40" placeholder="City or area" value="${esc(DD.loc)}" style="width:100%"></div></div>
+<label class="lab" for="dfood">Food preferences</label>
+<input id="dfood" maxlength="80" placeholder="e.g. No pork, loves spicy" value="${esc(DD.food)}" style="width:100%">
+<div class="fch">${FOODS.map(f=>`<button type="button" data-f="${esc(f)}" class="${fs.includes(f.toLowerCase())?"on":""}">${esc(f)}</button>`).join("")}</div>
+<div class="row" style="margin-top:6px"><button class="p" id="dsave" ${dirty?"":"disabled"}>${dirty?"Save details":"Details saved"}</button><span class="empty" id="dmsg"></span></div>
+<h2 style="margin-top:14px">Match tolerance</h2>
+<div class="empty" style="margin-bottom:8px">How closely matched do you want your opponents? Tap a level.</div>
+${TOLS.slice(1).map(t=>`<button type="button" class="tolo ${ME.tol===t.n?"on":""}" data-tol="${t.n}"><span class="tn">${t.n}</span><span><b>${t.i} ${t.t}</b><small>${t.d}</small></span></button>`).join("")}
+<label class="tgl row" style="margin:10px 0 0;flex-wrap:nowrap;gap:10px"><input type="checkbox" id="dshare" ${ME.share?"checked":""}><span>Share my age, location and food with players in my room</span></label>
+<div class="empty" style="margin-top:4px">Off by default. Your match tolerance is always shared, because the host's match maker uses it.</div>`;
+}
+function memberDetails(){
+  if(!ME)return {};
+  const o={tol:ME.tol||3};
+  o.age=ME.share&&ME.age!=null?ME.age:null;o.loc=ME.share?ME.loc||"":"";o.food=ME.share?ME.food||"":"";
+  return o;
+}
+function syncMember(){
+  if(!(FB&&RM&&ME))return;
+  FB.fs.updateDoc(FB.fs.doc(FB.db,"rooms",RM.id,"members",ME.uid),memberDetails()).catch(()=>{});
+}
+async function saveUser(fields,okMsg){
+  if(!(FB&&ME))return false;
+  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),fields);Object.assign(ME,fields);syncMember();if(okMsg)toast(okMsg);return true}
+  catch(e){toast(fbErr(e));return false}
+}
+async function saveDetails(){
+  const m=$("dmsg"),a=DD.age.trim();
+  let age=null;
+  if(a!==""){age=Math.round(Number(a));if(!(age>=5&&age<=99)){m.style.color="var(--warn)";m.textContent="Age should be between 5 and 99.";return}}
+  const ok=await saveUser({age,loc:DD.loc.trim().slice(0,40),food:DD.food.trim().slice(0,80)},"Details saved");
+  if(ok){resetDraft();renderAcct()}
+}
 function renderAcct(){
   renderRoom();renderHist();
   const c=$("acctcard");
@@ -1507,6 +1610,7 @@ function renderAcct(){
 <div class="row" style="gap:12px;align-items:center"><span style="font-size:2.4rem;font-weight:800;line-height:1">${lv.toFixed(2)}</span>${badge(lv)}<span>${level(lv)}</span></div>
 <div class="empty" style="margin-top:4px">${g} rated game${g===1?"":"s"}</div>
 ${g===0?`<div class="row" style="margin-top:10px"><label for="myrate">Starting level</label><input id="myrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" value="${lv.toFixed(1)}" style="flex:0 0 90px"></div><div class="empty" style="margin-top:6px">Set this before your first open play. After that your rating updates by itself.</div>`:`<div class="empty">Your rating updates by itself after every open play you finish.</div>`}
+${detailsHtml()}
 <div class="row" style="margin-top:12px"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div><div class="empty" style="margin-top:12px;font-size:.75rem">App build: ${APP_BUILD||"web"}${updMsg?" · update check: "+esc(updMsg):""}</div>`;
   }else if(S.net==="online"){
     c.innerHTML=`<h2>Account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button><button id="useoff">Use offline mode</button></div><div class="empty" style="margin-top:12px;font-size:.75rem">App build: ${APP_BUILD||"web"}${updMsg?" · update check: "+esc(updMsg):""}</div>`;
@@ -1557,7 +1661,7 @@ async function enterRoom(id){
   const d=snap.data();
   RM={id,host:d.hostUid===ME.uid,name:d.name,hostName:d.hostName,members:[],seen:false,unsubs:[]};
   LOCALS=S;applyState(d);
-  await f.fs.setDoc(f.fs.doc(f.db,"rooms",id,"members",ME.uid),{name:ME.name,acct:ME.acct,joinedAt:Date.now(),rating:ME.rating,games:ME.games,av:ME.av&&ME.av.t==="e"?ME.av:null});
+  await f.fs.setDoc(f.fs.doc(f.db,"rooms",id,"members",ME.uid),{name:ME.name,acct:ME.acct,joinedAt:Date.now(),rating:ME.rating,games:ME.games,av:ME.av&&ME.av.t==="e"?ME.av:null,...memberDetails()});
   RM.unsubs.push(f.fs.onSnapshot(ref,s=>{
     if(!RM)return;
     const x=s.data();
@@ -1570,6 +1674,7 @@ async function enterRoom(id){
   RM.unsubs.push(f.fs.onSnapshot(f.fs.collection(f.db,"rooms",id,"members"),qs=>{
     if(!RM)return;
     RM.members=qs.docs.map(m=>Object.assign({uid:m.id},m.data())).sort((a,b)=>a.joinedAt-b.joinedAt);
+    if(RM.host){let ch=false;S.players.forEach(p=>{if(!p.mid)return;const m=RM.members.find(x=>x.uid===p.mid);if(m&&m.tol>=1&&m.tol<=5&&p.tol!==m.tol){p.tol=m.tol;ch=true}});if(ch)save()}
     if(RM.members.some(m=>m.uid===ME.uid))RM.seen=true;
     else if(RM.seen&&!RM.host){leaveRoom("You were removed from the room.",true);return}
     renderRoom();
@@ -1637,7 +1742,7 @@ $("roomcard").onclick=async e=>{
     if(!m)return;
     if(S.players.some(p=>p.mid===m.uid)){toast(m.name+" is already a player.");return}
     const act=S.players.filter(p=>!p.hold),min=act.length?Math.min(...act.map(p=>p.played)):0;
-    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:m.rating??3,gm:m.games||0,av:m.av||null,mid:m.uid});
+    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:m.rating??3,gm:m.games||0,av:m.av||null,mid:m.uid,tol:m.tol>=1&&m.tol<=5?m.tol:3});
     save();render();toast(m.name+" added to players.");
   }
 };
@@ -1835,6 +1940,15 @@ $("acctcard").onchange=async e=>{
 };
 $("acctcard").onclick=async e=>{
   const bt=e.target.closest("button"),id=bt?bt.id:"";
+  const fc=e.target.closest("[data-f]");
+  if(fc&&ME){
+    const set=foodSet(),f=fc.dataset.f,i=set.findIndex(x=>x.toLowerCase()===f.toLowerCase());
+    if(i>=0)set.splice(i,1);else set.push(f);
+    DD.food=set.join(", ").slice(0,80);renderAcct();return;
+  }
+  const to=e.target.closest("[data-tol]");
+  if(to&&ME){const n=+to.dataset.tol;if(n!==ME.tol){ME.tol=n;renderAcct();saveUser({tol:n},"Match tolerance: "+tolLbl(n))}return}
+  if(id==="dsave"){saveDetails();return}
   if(id==="signin")openStart("auth");
   else if(id==="myav")openAv("me");
   else if(id==="useoff"){await leaveRoom();S.net="offline";save();renderAcct()}
@@ -1844,6 +1958,16 @@ $("acctcard").onclick=async e=>{
     try{await navigator.clipboard.writeText(t)}catch(x){}
     e.target.textContent="Copied";setTimeout(()=>{e.target.textContent="Copy"},1500);
   }
+};
+$("acctcard").oninput=e=>{
+  const t=e.target.id;
+  if(t==="dage"||t==="dloc"||t==="dfood"){
+    DD[t==="dage"?"age":t==="dloc"?"loc":"food"]=e.target.value;
+    const b=$("dsave");if(b){const dirty=(DD.age!==(ME.age!=null?String(ME.age):"")||DD.loc!==(ME.loc||"")||DD.food!==(ME.food||""));b.disabled=!dirty;b.textContent=dirty?"Save details":"Details saved"}
+  }
+};
+$("acctcard").onchange=e=>{
+  if(e.target.id==="dshare"&&ME){const v=e.target.checked;ME.share=v;saveUser({share:v},v?"Sharing details with your room":"Details are private")}
 };
 $("goOff").onclick=()=>{S.net="offline";save();$("start").hidden=true;renderAcct()};
 $("goOn").onclick=()=>openStart("auth");
