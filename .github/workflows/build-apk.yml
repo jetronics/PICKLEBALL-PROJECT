@@ -60,6 +60,29 @@ jobs:
         run: |
           mkdir -p ~/.android
           cp debug.keystore ~/.android/debug.keystore
+          # Point Gradle straight at the repo keystore. Copying it to ~/.android alone was not enough:
+          # the APK still came out signed with a different key.
+          cat >> android/app/build.gradle <<EOF
+
+          // Sign every build with the repo's debug.keystore so phones can update in place
+          android {
+              signingConfigs {
+                  fixed {
+                      storeFile file("$GITHUB_WORKSPACE/debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                      storeType "pkcs12"
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.fixed
+                  }
+              }
+          }
+          EOF
+          tail -22 android/app/build.gradle
 
       - name: Sync web files
         run: npx cap sync android
