@@ -128,6 +128,16 @@ body.ro #t-tour :is(button:not(.keep),input),body.ro #t-players :is(button,input
 .av img{width:100%;height:100%;object-fit:cover}
 .av.em{background:var(--a)}
 .avb{padding:0;border:0;background:none;border-radius:50%;line-height:0;cursor:pointer}
+.gearb{flex:none;width:42px;height:42px;padding:0;border-radius:50%;font-size:1.3rem;line-height:1;display:flex;align-items:center;justify-content:center}
+#setpanel{position:fixed;inset:0;z-index:40;background:var(--bg);overflow:auto;-webkit-overflow-scrolling:touch}
+#setpanel[hidden]{display:none}
+.sethd{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+.sethd b{font-size:1.1rem}
+.sethd button{padding:6px 14px}
+#setbody{padding:14px 16px calc(28px + env(safe-area-inset-bottom,0px));max-width:640px;margin:0 auto}
+.kv{display:grid;grid-template-columns:118px minmax(0,1fr);gap:8px 10px;margin:0;font-size:.92rem}
+.kv dt{color:var(--mute)}.kv dd{margin:0;font-weight:600;word-break:break-word}.kv dd small{display:block;color:var(--mute);font-weight:400}
+.kv .none{color:var(--mute);font-weight:400;font-style:italic}
 .pn{display:inline-flex;align-items:center;min-width:0}
 .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .team .av{margin-right:4px}
@@ -389,6 +399,7 @@ button.pnm{cursor:pointer}
 <button class="big keep" id="calldismiss">Dismiss</button>
 </div></div>
 <div id="toast" hidden></div>
+<div id="setpanel" hidden><div class="sethd"><button id="setback" aria-label="Back">← Back</button><b>Settings</b></div><div id="setbody"></div></div>
 <canvas id="confetti" hidden></canvas>
 <div id="cropmodal" hidden><div class="avbox">
 <b>Crop avatar</b>
@@ -1598,26 +1609,71 @@ async function saveDetails(){
   const ok=await saveUser({age,loc:DD.loc.trim().slice(0,40),food:DD.food.trim().slice(0,80)},"Details saved");
   if(ok){resetDraft();renderAcct()}
 }
+const GEAR='<button id="gear" class="gearb" aria-label="Settings" title="Settings">⚙️</button>';
+const noneTxt=t=>`<span class="none">${t}</span>`;
 function renderAcct(){
   renderRoom();renderHist();
   const c=$("acctcard");
   if(S.net==="online"&&ME){
-    const lv=ME.rating,g=ME.games;
-    c.innerHTML=`<h2>Account</h2>
-<div class="row" style="flex-wrap:nowrap;gap:14px;margin-bottom:8px"><button class="avb" id="myav" aria-label="Change avatar">${av({name:ME.name,av:ME.av},84)}</button><div style="min-width:0"><div style="font-size:1.15rem;font-weight:800;overflow:hidden;text-overflow:ellipsis">${esc(ME.name)}</div><div class="empty" style="overflow:hidden;text-overflow:ellipsis">${esc(ME.email)}</div><div class="empty">Tap your avatar to change it</div></div></div>
+    const lv=ME.rating,g=ME.games,tl=TOLS[ME.tol]||TOLS[3];
+    c.innerHTML=`<div class="row" style="justify-content:space-between;flex-wrap:nowrap;margin-bottom:10px"><h2 style="margin:0">Account</h2>${GEAR}</div>
+<div class="row" style="flex-wrap:nowrap;gap:14px;margin-bottom:8px">${av({name:ME.name,av:ME.av},84)}<div style="min-width:0"><div style="font-size:1.15rem;font-weight:800;overflow:hidden;text-overflow:ellipsis">${esc(ME.name)}</div><div class="empty" style="overflow:hidden;text-overflow:ellipsis">${esc(ME.email)}</div></div></div>
 <div class="grow"><span>Account no.</span><b style="width:auto;font-size:1.05rem;letter-spacing:.05em">WP-${esc(ME.acct)}</b><button id="cpacct">Copy</button></div>
 <h2 style="margin-top:14px">My rating</h2>
 <div class="row" style="gap:12px;align-items:center"><span style="font-size:2.4rem;font-weight:800;line-height:1">${lv.toFixed(2)}</span>${badge(lv)}<span>${level(lv)}</span></div>
-<div class="empty" style="margin-top:4px">${g} rated game${g===1?"":"s"}</div>
-${g===0?`<div class="row" style="margin-top:10px"><label for="myrate">Starting level</label><input id="myrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" value="${lv.toFixed(1)}" style="flex:0 0 90px"></div><div class="empty" style="margin-top:6px">Set this before your first open play. After that your rating updates by itself.</div>`:`<div class="empty">Your rating updates by itself after every open play you finish.</div>`}
-${detailsHtml()}
-<div class="row" style="margin-top:12px"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div><div class="empty" style="margin-top:12px;font-size:.75rem">App build: ${APP_BUILD||"web"}${updMsg?" · update check: "+esc(updMsg):""}</div>`;
+<div class="empty" style="margin-top:4px">${g} rated game${g===1?"":"s"}${g===0?" · set your starting level in Settings":""}</div>
+<h2 style="margin-top:14px">About me</h2>
+<dl class="kv">
+<dt>Age</dt><dd>${ME.age!=null?esc(ME.age):noneTxt("Not set")}</dd>
+<dt>Location</dt><dd>${ME.loc?esc(ME.loc):noneTxt("Not set")}</dd>
+<dt>Food</dt><dd>${ME.food?esc(ME.food):noneTxt("Not set")}</dd>
+<dt>Match tolerance</dt><dd>${tl.i} ${tl.t}<small>${esc(tl.d)}</small></dd>
+<dt>Sharing</dt><dd>${ME.share?"Age, location and food are visible to my room":"Private (only my match tolerance is shared)"}</dd>
+</dl>
+<div class="empty" style="margin-top:10px">Tap ⚙️ to change your avatar, details and app settings.</div>`;
   }else if(S.net==="online"){
-    c.innerHTML=`<h2>Account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button><button id="useoff">Use offline mode</button></div><div class="empty" style="margin-top:12px;font-size:.75rem">App build: ${APP_BUILD||"web"}${updMsg?" · update check: "+esc(updMsg):""}</div>`;
+    c.innerHTML=`<div class="row" style="justify-content:space-between;flex-wrap:nowrap;margin-bottom:10px"><h2 style="margin:0">Account</h2>${GEAR}</div><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button><button id="useoff">Use offline mode</button></div>`;
   }else{
-    c.innerHTML=`<h2>Account</h2><div class="empty">Offline mode: no account needed. Everything stays on this phone.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Go online</button></div><div class="empty" style="margin-top:12px;font-size:.75rem">App build: ${APP_BUILD||"web"}${updMsg?" · update check: "+esc(updMsg):""}</div>`;
+    c.innerHTML=`<div class="row" style="justify-content:space-between;flex-wrap:nowrap;margin-bottom:10px"><h2 style="margin:0">Account</h2>${GEAR}</div><div class="empty">Offline mode: no account needed. Everything stays on this phone.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Go online</button></div>`;
   }
+  renderSettings();
 }
+/* ---------- Settings screen (opened with the gear) ---------- */
+function renderSettings(force){
+  const p=$("setpanel"),b=$("setbody");if(!p||p.hidden)return;
+  const ae=document.activeElement;
+  if(!force&&ae&&b.contains&&b.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return; // don't steal focus while typing
+  const top=p.scrollTop;
+  let h="";
+  if(S.net==="online"&&ME){
+    const lv=ME.rating,g=ME.games;
+    h+=`<div class="card"><h2 style="margin-top:0">My account</h2>
+<div class="row" style="flex-wrap:nowrap;gap:14px"><button class="avb" id="myav" aria-label="Change avatar">${av({name:ME.name,av:ME.av},76)}</button><div style="min-width:0"><div style="font-weight:800;overflow:hidden;text-overflow:ellipsis">${esc(ME.name)}</div><div class="empty" style="overflow:hidden;text-overflow:ellipsis">${esc(ME.email)}</div><div class="empty">WP-${esc(ME.acct)}</div></div></div>
+<div class="empty" style="margin-top:6px">Tap your avatar to change it.</div>
+${g===0?`<div class="row" style="margin-top:12px"><label for="myrate">Starting level</label><input id="myrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" value="${lv.toFixed(1)}" style="flex:0 0 90px"></div><div class="empty" style="margin-top:6px">Set this before your first open play. After that your rating updates by itself.</div>`:`<div class="empty" style="margin-top:8px">Your rating (${lv.toFixed(2)}) updates by itself after every open play you finish.</div>`}</div>
+<div class="card">${detailsHtml()}</div>`;
+  }else if(S.net==="online"){
+    h+=`<div class="card"><h2 style="margin-top:0">My account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button></div></div>`;
+  }else{
+    h+=`<div class="card"><h2 style="margin-top:0">My account</h2><div class="empty">Offline mode: no account needed. Go online to use rooms, ratings and history.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Go online</button></div></div>`;
+  }
+  h+=`<div class="card"><h2 style="margin-top:0">Sound &amp; effects</h2><label class="tgl row" style="margin:0;flex-wrap:nowrap;gap:10px"><input type="checkbox" id="setsound" ${muted?"":"checked"}><span>Celebration sounds (applause and fanfare)</span></label></div>
+<div class="card"><h2 style="margin-top:0">App</h2><dl class="kv"><dt>Build</dt><dd>${APP_BUILD||"web"}</dd><dt>Updates</dt><dd>${updMsg?esc(updMsg):noneTxt("Not checked yet")}</dd></dl><div class="row" style="margin-top:10px"><button id="chkupd">Check for updates</button></div></div>`;
+  if(S.net==="online"&&ME)h+=`<div class="card"><h2 style="margin-top:0">Session</h2><div class="row"><button id="useoff">Use offline mode</button><button id="logout">Log out</button></div></div>`;
+  else if(S.net==="online")h+=`<div class="card"><h2 style="margin-top:0">Session</h2><div class="row"><button id="useoff">Use offline mode</button></div></div>`;
+  b.innerHTML=h;p.scrollTop=top;
+}
+function openSettings(){
+  $("setpanel").hidden=false;renderSettings(true);$("setpanel").scrollTop=0;
+  try{history.pushState({set:1},"")}catch(e){}
+}
+function hideSettings(){$("setpanel").hidden=true;renderAcct()}
+function closeSettings(){
+  let viaHistory=false;
+  try{if(history.state&&history.state.set){history.back();viaHistory=true}}catch(e){}
+  if(!viaHistory)hideSettings();
+}
+window.addEventListener("popstate",()=>{if(!$("setpanel").hidden)hideSettings()});
 const newState=()=>({tour:null,players:[],mode:2,courts:2,round:0,cur:null,hist:[],partner:{},opp:{},uid:1,ended:false,endRounds:0});
 const genId=()=>{const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let t="";for(let i=0;i<6;i++)t+=c[Math.floor(Math.random()*c.length)];return t};
 function strip(x){const o=Object.assign({},x);delete o.tab;delete o.net;o.players=x.players.map(p=>p.av&&p.av.t==="p"?Object.assign({},p,{av:null}):p);return o}
@@ -1931,14 +1987,7 @@ async function settleSession(){
     await loadHistory();renderAcct();toast("Open play saved to your account history.");
   }catch(e){delete SIG[key]}
 }
-$("acctcard").onchange=async e=>{
-  if(e.target.id!=="myrate"||!ME||ME.games!==0||!FB)return;
-  const v=Math.round(clampR(parseFloat(e.target.value))*100)/100;
-  ME.rating=v;
-  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),{rating:v,startRating:v})}catch(x){toast(fbErr(x))}
-  renderAcct();
-};
-$("acctcard").onclick=async e=>{
+const acctClick=async e=>{
   const bt=e.target.closest("button"),id=bt?bt.id:"";
   const fc=e.target.closest("[data-f]");
   if(fc&&ME){
@@ -1948,9 +1997,12 @@ $("acctcard").onclick=async e=>{
   }
   const to=e.target.closest("[data-tol]");
   if(to&&ME){const n=+to.dataset.tol;if(n!==ME.tol){ME.tol=n;renderAcct();saveUser({tol:n},"Match tolerance: "+tolLbl(n))}return}
+  if(id==="gear"){openSettings();return}
+  if(id==="setback"){closeSettings();return}
+  if(id==="chkupd"){updMsg="checking…";renderSettings(true);checkUpdate(true);return}
   if(id==="dsave"){saveDetails();return}
-  if(id==="signin")openStart("auth");
-  else if(id==="myav")openAv("me");
+  if(id==="signin"){openStart("auth")}
+  else if(e.target.closest("#myav"))openAv("me");
   else if(id==="useoff"){await leaveRoom();S.net="offline";save();renderAcct()}
   else if(id==="logout"){await leaveRoom();try{const f=await fbLoad();await f.au.signOut(f.auth)}catch(x){}ME=null;S.net="offline";save();renderAcct()}
   else if(id==="cpacct"&&ME){
@@ -1959,16 +2011,28 @@ $("acctcard").onclick=async e=>{
     e.target.textContent="Copied";setTimeout(()=>{e.target.textContent="Copy"},1500);
   }
 };
-$("acctcard").oninput=e=>{
+const acctInput=e=>{
   const t=e.target.id;
   if(t==="dage"||t==="dloc"||t==="dfood"){
     DD[t==="dage"?"age":t==="dloc"?"loc":"food"]=e.target.value;
     const b=$("dsave");if(b){const dirty=(DD.age!==(ME.age!=null?String(ME.age):"")||DD.loc!==(ME.loc||"")||DD.food!==(ME.food||""));b.disabled=!dirty;b.textContent=dirty?"Save details":"Details saved"}
   }
 };
-$("acctcard").onchange=e=>{
-  if(e.target.id==="dshare"&&ME){const v=e.target.checked;ME.share=v;saveUser({share:v},v?"Sharing details with your room":"Details are private")}
+const acctChange=async e=>{
+  const id=e.target.id;
+  if(id==="myrate"){
+    if(!ME||ME.games!==0||!FB)return;
+    const v=Math.round(clampR(parseFloat(e.target.value))*100)/100;
+    ME.rating=v;
+    try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),{rating:v,startRating:v});syncMember()}catch(x){toast(fbErr(x))}
+    renderAcct();
+  }else if(id==="dshare"&&ME){
+    const v=e.target.checked;ME.share=v;saveUser({share:v},v?"Sharing details with your room":"Details are private");
+  }else if(id==="setsound"){
+    muted=!e.target.checked;try{localStorage.setItem("wp-mute",muted?"1":"0")}catch(x){}setMuteIcon();
+  }
 };
+for(const el of [$("acctcard"),$("setpanel")]){el.onclick=acctClick;el.oninput=acctInput;el.onchange=acctChange}
 $("goOff").onclick=()=>{S.net="offline";save();$("start").hidden=true;renderAcct()};
 $("goOn").onclick=()=>openStart("auth");
 $("aswap").onclick=()=>setAuthMode(authMode==="signup"?"login":"signup");
