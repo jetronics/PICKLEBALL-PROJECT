@@ -103,6 +103,19 @@ body.ro #t-tour :is(button:not(.keep),input),body.ro #t-players :is(button,input
 .mrow .row{gap:6px;flex-wrap:nowrap}
 #confetti{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:95}
 #confetti[hidden]{display:none}
+#grand{position:fixed;inset:0;z-index:94;pointer-events:none;overflow:hidden}
+#grand[hidden]{display:none}
+#grand .beam{position:absolute;bottom:-8vh;width:46vmax;height:130vmax;left:calc(var(--x) - 23vmax);transform-origin:50% 100%;opacity:0;transition:opacity 1.4s;background:linear-gradient(to top,rgba(255,226,150,.36),rgba(255,226,150,.12) 55%,rgba(255,226,150,0));clip-path:polygon(47% 100%,53% 100%,100% 0,0 0);mix-blend-mode:screen;animation:sweep var(--sp,7s) ease-in-out infinite alternate}
+#grand .b1{--x:16%;--r:-26deg;--sp:6.5s}#grand .b2{--x:50%;--r:0deg;--sp:8s}#grand .b3{--x:84%;--r:26deg;--sp:7.2s}
+#grand.on .beam{opacity:1}
+@keyframes sweep{from{transform:rotate(calc(var(--r) - 22deg))}to{transform:rotate(calc(var(--r) + 22deg))}}
+#grand .gflash{position:absolute;inset:0;background:radial-gradient(circle at 50% 42%,#fff 0,rgba(255,236,170,.65) 32%,rgba(255,236,170,0) 70%);opacity:0}
+#grand.hit .gflash{animation:gfl 1.1s ease-out}
+@keyframes gfl{0%{opacity:.95}100%{opacity:0}}
+#grand .gbanner{position:absolute;left:0;right:0;top:15%;text-align:center;font-weight:900;font-size:clamp(1.2rem,5.4vw,3rem);letter-spacing:.14em;color:#ffe9a8;text-shadow:0 0 12px #f5c542,0 0 34px rgba(245,197,66,.9),0 3px 0 #7a5a00;opacity:0}
+#grand.hit .gbanner{animation:gban 3.8s cubic-bezier(.2,1.3,.3,1) both}
+@keyframes gban{0%{opacity:0;transform:scale(.3)}12%{opacity:1;transform:scale(1.12)}22%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){#grand .beam,#grand .gflash{display:none}#grand.hit .gbanner{animation:gfade 3s both}@keyframes gfade{0%,100%{opacity:0}15%,80%{opacity:1}}}
 #toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;z-index:90;background:var(--acc);color:var(--accink);font-weight:700;padding:12px 14px;border-radius:12px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 #toast[hidden]{display:none}
 #start{position:fixed;inset:0;background:var(--bg);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
@@ -434,6 +447,7 @@ button.pnm{cursor:pointer}
 <div id="toast" hidden></div>
 <div id="setpanel" hidden><div class="sethd"><button id="setback" aria-label="Back">← Back</button><b>Settings</b></div><div id="setbody"></div></div>
 <canvas id="confetti" hidden></canvas>
+<div id="grand" hidden aria-hidden="true"><i class="beam b1"></i><i class="beam b2"></i><i class="beam b3"></i><div class="gflash"></div><div class="gbanner">🏆 TOURNAMENT CHAMPIONS 🏆</div></div>
 <div id="cropmodal" hidden><div class="avbox">
 <b>Crop avatar</b>
 <canvas id="cropstage"></canvas>
@@ -1057,30 +1071,128 @@ function noiseBuf(ctx){
   for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
   return noiseB=b;
 }
-function applause(dur,vol){
-  const ctx=audioCtx();if(!ctx||muted)return;
-  try{
-    const t0=ctx.currentTime+0.03,nb=noiseBuf(ctx);
-    const master=ctx.createGain(),comp=ctx.createDynamicsCompressor();
-    master.gain.value=vol;master.connect(comp);comp.connect(ctx.destination);
-    const env=t=>Math.max(0,Math.min(1,t/0.5)*Math.min(1,(dur-t)/1.4));
-    const bed=ctx.createBufferSource();bed.buffer=nb;bed.loop=true;
-    const bp=ctx.createBiquadFilter();bp.type="bandpass";bp.frequency.value=1500;bp.Q.value=0.5;
-    const bg=ctx.createGain();
-    bg.gain.setValueAtTime(0.0001,t0);bg.gain.linearRampToValueAtTime(0.2,t0+0.6);
-    bg.gain.setValueAtTime(0.2,t0+Math.max(0.7,dur-1.4));bg.gain.linearRampToValueAtTime(0.0001,t0+dur);
-    bed.connect(bp);bp.connect(bg);bg.connect(master);bed.start(t0);bed.stop(t0+dur+0.1);
-    const n=Math.round(dur*34);
-    for(let i=0;i<n;i++){
-      let t;do{t=Math.random()*(dur-0.1)}while(Math.random()>env(t)+0.05);
-      const src=ctx.createBufferSource();src.buffer=nb;
-      const f=ctx.createBiquadFilter();f.type="bandpass";f.frequency.value=1000+Math.random()*2800;f.Q.value=0.7+Math.random()*1.2;
-      const g=ctx.createGain(),a=0.5*(0.35+Math.random()*0.65)*(0.4+0.6*env(t)),at=t0+t;
-      g.gain.setValueAtTime(0.0001,at);g.gain.linearRampToValueAtTime(a,at+0.003);
-      g.gain.exponentialRampToValueAtTime(0.0001,at+0.05+Math.random()*0.05);
-      src.connect(f);f.connect(g);g.connect(master);src.start(at,Math.random()*1.5,0.12);
+/* ---------- celebration sound toolkit (everything is synthesized, no audio files) ---------- */
+const rnd=(a,b)=>a+Math.random()*(b-a);
+// shared output: a gentle "hall" reverb + compressor, so instruments blend and claps sound like a room, not a hiss
+function bus(ctx){
+  if(ctx._wb)return ctx._wb;
+  const dry=ctx.createGain(),wet=ctx.createGain(),comp=ctx.createDynamicsCompressor(),conv=ctx.createConvolver();
+  const len=Math.floor(ctx.sampleRate*1.7),ir=ctx.createBuffer(2,len,ctx.sampleRate);
+  for(let c=0;c<2;c++){const d=ir.getChannelData(c);let lp=0;for(let i=0;i<len;i++){const n=(Math.random()*2-1)*Math.pow(1-i/len,2.6);lp+=(n-lp)*.45;d[i]=lp}}
+  conv.buffer=ir;wet.gain.value=.34;
+  dry.connect(comp);dry.connect(conv);conv.connect(wet);wet.connect(comp);comp.connect(ctx.destination);
+  return ctx._wb={in:dry};
+}
+// individual hand claps: 1-3 quick slaps of noise through a resonant band-pass, every clap a little different
+let clapB=null;
+function clapBufs(ctx){
+  if(clapB&&clapB.sr===ctx.sampleRate)return clapB.list;
+  const sr=ctx.sampleRate,len=Math.floor(sr*.085),list=[];
+  for(let k=0;k<16;k++){
+    const b=ctx.createBuffer(1,len,sr),d=b.getChannelData(0),hits=1+Math.floor(Math.random()*3);
+    for(let h=0;h<hits;h++){
+      const off=Math.floor(sr*h*rnd(.003,.011)),tau=sr*rnd(.0035,.0085),amp=h?rnd(.5,.9):1;
+      for(let i=0;i+off<len;i++)d[i+off]+=(Math.random()*2-1)*Math.exp(-i/tau)*amp;
     }
-  }catch(e){}
+    const w0=2*Math.PI*rnd(900,2700)/sr,al=Math.sin(w0)/(2*rnd(1.2,3.4)),a0=1+al,c0=al/a0,c2=-al/a0,a1=-2*Math.cos(w0)/a0,a2=(1-al)/a0;
+    let x1=0,x2=0,y1=0,y2=0,pk=1e-6;
+    for(let i=0;i<len;i++){const x=d[i],y=c0*x+c2*x2-a1*y1-a2*y2;x2=x1;x1=x;y2=y1;y1=y;d[i]=y;pk=Math.max(pk,Math.abs(y))}
+    for(let i=0;i<len;i++)d[i]/=pk;
+    list.push(b);
+  }
+  clapB={sr,list};return list;
+}
+// when each clap happens: random (Poisson) timing, sparse at first, building to a roar, then thinning out. Never a steady pulse.
+function clapTimes(dur,peak){
+  const rate=t=>{const k=t/dur;return 3+peak*Math.max(.04,Math.min(1,k/.3)*Math.min(1,(1-k)/.28))};
+  const out=[];let t=0;
+  while(t<dur){t+=-Math.log(1-Math.random())/rate(t);if(t<dur)out.push(t)}
+  return out;
+}
+function applauseAt(ctx,out,at,dur,vol,peak){
+  const list=clapBufs(ctx),g=ctx.createGain(),pan=!!ctx.createStereoPanner;
+  g.gain.value=vol;g.connect(out);
+  clapTimes(dur,peak).forEach(t=>{
+    const s=ctx.createBufferSource(),v=ctx.createGain();
+    s.buffer=list[Math.floor(Math.random()*list.length)];s.playbackRate.value=rnd(.82,1.3);
+    v.gain.value=rnd(.25,1)*(.55+.45*Math.min(1,t/(dur*.3)));
+    s.connect(v);
+    if(pan){const p=ctx.createStereoPanner();p.pan.value=rnd(-.85,.85);v.connect(p);p.connect(g)}else v.connect(g);
+    s.start(at+t);
+  });
+}
+function applause(dur,vol){ // kept for older callers
+  const ctx=audioCtx();if(!ctx||muted)return;
+  try{applauseAt(ctx,bus(ctx).in,ctx.currentTime+.03,dur,(vol||.5)*.3,50)}catch(e){}
+}
+function snare(ctx,dest,t,v){
+  const n=ctx.createBufferSource(),f=ctx.createBiquadFilter(),hp=ctx.createBiquadFilter(),g=ctx.createGain();
+  n.buffer=noiseBuf(ctx);f.type="bandpass";f.frequency.value=3400;f.Q.value=.55;hp.type="highpass";hp.frequency.value=1100;
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+.13);
+  n.connect(f);f.connect(hp);hp.connect(g);g.connect(dest);n.start(t,Math.random()*1.4,.15);
+  const o=ctx.createOscillator(),og=ctx.createGain();
+  o.type="triangle";o.frequency.setValueAtTime(210,t);o.frequency.exponentialRampToValueAtTime(150,t+.08);
+  og.gain.setValueAtTime(v*.8,t);og.gain.exponentialRampToValueAtTime(.001,t+.1);
+  o.connect(og);og.connect(dest);o.start(t);o.stop(t+.12);
+}
+// separate drum hits that speed up (da da da da da-da-da-da-DUM), not one continuous roll
+const FLOURISH=[0,.12,.24,.36,.45,.54,.6,.66,.84];
+function snareRun(ctx,dest,t){FLOURISH.forEach((o,i)=>snare(ctx,dest,t+o,.26+.52*i/(FLOURISH.length-1)))}
+function timp(ctx,dest,t,f,v){
+  const o=ctx.createOscillator(),g=ctx.createGain(),n=ctx.createBufferSource(),hp=ctx.createBiquadFilter(),ng=ctx.createGain();
+  o.type="sine";o.frequency.setValueAtTime(f*1.55,t);o.frequency.exponentialRampToValueAtTime(f,t+.22);
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+1.1);o.connect(g);g.connect(dest);o.start(t);o.stop(t+1.15);
+  n.buffer=noiseBuf(ctx);hp.type="highpass";hp.frequency.value=1800;ng.gain.setValueAtTime(v*.35,t);ng.gain.exponentialRampToValueAtTime(.001,t+.03);
+  n.connect(hp);hp.connect(ng);ng.connect(dest);n.start(t,Math.random()*1.4,.05);
+}
+function whistle(ctx,dest,t,v){
+  const o=ctx.createOscillator(),l=ctx.createOscillator(),lg=ctx.createGain(),g=ctx.createGain();
+  o.type="sine";o.frequency.setValueAtTime(2300,t);o.frequency.exponentialRampToValueAtTime(3300,t+.28);o.frequency.linearRampToValueAtTime(3000,t+.5);
+  l.frequency.value=26;lg.gain.value=70;l.connect(lg);lg.connect(o.frequency);
+  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+.03);g.gain.setValueAtTime(v,t+.4);g.gain.exponentialRampToValueAtTime(.0001,t+.55);
+  o.connect(g);g.connect(dest);o.start(t);l.start(t);o.stop(t+.6);l.stop(t+.6);
+}
+// a crowd "whoo!": a sawtooth voice through two vowel resonances, gliding upward
+function cheer(ctx,dest,t,dur,f0,v){
+  const o=ctx.createOscillator(),l=ctx.createOscillator(),lg=ctx.createGain(),mix=ctx.createGain();
+  o.type="sawtooth";o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f0*1.55,t+dur*.7);o.frequency.exponentialRampToValueAtTime(f0*1.3,t+dur);
+  l.frequency.value=5.5;lg.gain.value=f0*.015;l.connect(lg);lg.connect(o.frequency);
+  mix.gain.setValueAtTime(.0001,t);mix.gain.linearRampToValueAtTime(v,t+.09);mix.gain.setValueAtTime(v,t+dur*.6);mix.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  [[720,.9,5],[1150,.55,6]].forEach(([fr,a,q])=>{const bp=ctx.createBiquadFilter(),ag=ctx.createGain();bp.type="bandpass";bp.frequency.value=fr;bp.Q.value=q;ag.gain.value=a;o.connect(bp);bp.connect(ag);ag.connect(mix)});
+  mix.connect(dest);o.start(t);l.start(t);o.stop(t+dur+.05);l.stop(t+dur+.05);
+}
+function cheers(ctx,dest,t,span,n,v){
+  for(let i=0;i<n;i++)cheer(ctx,dest,t+rnd(0,span),rnd(.45,.9),Math.random()<.5?rnd(115,170):rnd(230,330),v*rnd(.6,1));
+}
+function bell(ctx,dest,t,f,v){
+  [[1,1],[2.76,.35]].forEach(([m,a])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=f*m;g.gain.setValueAtTime(v*a,t);g.gain.exponentialRampToValueAtTime(.0001,t+1.3);o.connect(g);g.connect(dest);o.start(t);o.stop(t+1.35)});
+}
+const SPARK=[1046.5,1174.66,1318.51,1567.98,1760,2093];
+function sparkle(ctx,dest,t,span,n,v){for(let i=0;i<n;i++)bell(ctx,dest,t+rnd(0,span),SPARK[Math.floor(Math.random()*SPARK.length)],v*rnd(.5,1))}
+// slowly swelling choir-like chord
+function pad(ctx,dest,t,dur,v){
+  const lp=ctx.createBiquadFilter(),g=ctx.createGain();
+  lp.type="lowpass";lp.frequency.setValueAtTime(350,t);lp.frequency.linearRampToValueAtTime(1800,t+dur*.45);lp.frequency.linearRampToValueAtTime(700,t+dur);
+  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+Math.min(2.4,dur*.4));g.gain.setValueAtTime(v,t+Math.max(2.5,dur-1.4));g.gain.linearRampToValueAtTime(.0001,t+dur);
+  lp.connect(g);g.connect(dest);
+  [130.81,196,261.63,329.63,392,523.25].forEach((f,i)=>[-1,1].forEach(sd=>{const o=ctx.createOscillator();o.type="sawtooth";o.frequency.value=f;o.detune.value=sd*(5+i);o.connect(lp);o.start(t);o.stop(t+dur+.05)}));
+}
+function chord(ctx,dest,fs,t,dur,v){fs.forEach(f=>brass(ctx,dest,f,t,dur,v))}
+function launchSnd(ctx,dest,t,v){
+  const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.setValueAtTime(500,t);o.frequency.exponentialRampToValueAtTime(1700,t+.35);
+  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+.05);g.gain.exponentialRampToValueAtTime(.0001,t+.36);o.connect(g);g.connect(dest);o.start(t);o.stop(t+.4);
+}
+function boomSnd(ctx,dest,t,v){
+  const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.setValueAtTime(110,t);o.frequency.exponentialRampToValueAtTime(38,t+.35);
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+.6);o.connect(g);g.connect(dest);o.start(t);o.stop(t+.65);
+  const n=ctx.createBufferSource(),lp=ctx.createBiquadFilter(),ng=ctx.createGain();
+  n.buffer=noiseBuf(ctx);lp.type="lowpass";lp.frequency.value=1400;ng.gain.setValueAtTime(v*.8,t);ng.gain.exponentialRampToValueAtTime(.001,t+.3);
+  n.connect(lp);lp.connect(ng);ng.connect(dest);n.start(t,Math.random()*1.4,.35);
+  for(let i=0;i<7;i++){ // crackle
+    const c=ctx.createBufferSource(),hp=ctx.createBiquadFilter(),cg=ctx.createGain(),at=t+.08+Math.random()*.55;
+    c.buffer=noiseBuf(ctx);hp.type="highpass";hp.frequency.value=5000;cg.gain.setValueAtTime(v*.35*Math.random(),at);cg.gain.exponentialRampToValueAtTime(.001,at+.03);
+    c.connect(hp);hp.connect(cg);cg.connect(dest);c.start(at,Math.random()*1.4,.04);
+  }
 }
 function brass(ctx,dest,f,t,dur,vol){
   const o1=ctx.createOscillator(),o2=ctx.createOscillator(),o3=ctx.createOscillator();
@@ -1097,17 +1209,6 @@ function brass(ctx,dest,f,t,dur,vol){
   o1.connect(lp);o2.connect(lp);o3.connect(g3);g3.connect(lp);lp.connect(g);g.connect(dest);
   [o1,o2,o3,lfo].forEach(o=>{o.start(t);o.stop(t+dur+.05)});
 }
-function drumroll(ctx,dest,t,dur){
-  const nb=noiseBuf(ctx),n=Math.floor(dur/.042);
-  for(let i=0;i<n;i++){
-    const at=t+i*.042+Math.random()*.006,p=i/n;
-    const src=ctx.createBufferSource();src.buffer=nb;
-    const f=ctx.createBiquadFilter();f.type="bandpass";f.frequency.value=1700+Math.random()*500;f.Q.value=.9;
-    const g=ctx.createGain(),a=(.12+.5*p)*(.8+Math.random()*.4);
-    g.gain.setValueAtTime(.0001,at);g.gain.linearRampToValueAtTime(a,at+.003);g.gain.exponentialRampToValueAtTime(.0001,at+.05);
-    src.connect(f);f.connect(g);g.connect(dest);src.start(at,Math.random()*1.5,.08);
-  }
-}
 function cymbal(ctx,dest,t,vol,dur){
   const src=ctx.createBufferSource();src.buffer=noiseBuf(ctx);src.loop=true;
   const hp=ctx.createBiquadFilter();hp.type="highpass";hp.frequency.value=5200;
@@ -1120,27 +1221,53 @@ function timpani(ctx,dest,t,vol){
   g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+.7);
   o.connect(g);g.connect(dest);o.start(t);o.stop(t+.75);
 }
-// drum roll, a bugle-style brass fanfare, timpani and a cymbal crash. Returns true when it played.
-function fanfare(full){
-  const ctx=audioCtx();if(!ctx||muted)return false;
-  try{
-    const master=ctx.createGain(),comp=ctx.createDynamicsCompressor();
-    master.gain.value=full?.9:.6;master.connect(comp);comp.connect(ctx.destination);
-    let t=ctx.currentTime+.04;
-    if(full){drumroll(ctx,master,t,.95);t+=1}
-    const G4=392,C5=523.25,E5=659.25,G5=783.99,C6=1046.5,v=.2;
-    [[G4,0,.12],[C5,.14,.12],[E5,.28,.12],[G5,.42,full?.36:.5]].forEach(([f,o,d])=>brass(ctx,master,f,t+o,d,v));
-    if(full){
-      [[E5,.84,.14],[G5,1,1.1]].forEach(([f,o,d])=>brass(ctx,master,f,t+o,d,v));
-      brass(ctx,master,C5,t+1,1.1,v*.7);brass(ctx,master,E5,t+1,1.1,v*.6);brass(ctx,master,C6,t+1,1.1,v*.5);
-      timpani(ctx,master,t+1,.9);cymbal(ctx,master,t+1,.5,1.6);
-    }else cymbal(ctx,master,t+.42,.25,.9);
-    return true;
-  }catch(e){return false}
+// ---------- the two scores ----------
+const HARM={392:329.63,523.25:440,659.25:523.25,783.99:659.25,1046.5:880,880:698.46,698.46:587.33,587.33:493.88};
+// original heroic melody in C major: [note, start (in beats), length (in beats)]
+const MELODY=[[392,0,1],[523.25,1,1],[659.25,2,1],[783.99,3,3],[659.25,6,1],[783.99,7,1],[1046.5,8,5],[880,13,1],[783.99,14,1],[659.25,15,1],[587.33,16,1],[523.25,17,3]];
+const FW_T=[.3,1.1,1.9,2.6,3.4,4.1,4.9]; // firework burst times (seconds after the big hit)
+// OPEN PLAY: bright and playful. Drum flourish, bugle call, whistles, cheering crowd.
+function scoreOpen(ctx,out,t0,full){
+  const m=ctx.createGain();m.gain.value=full?.95:.75;m.connect(out);
+  if(full){
+    snareRun(ctx,m,t0);
+    const t=t0+.9;
+    [[392,0,.12],[523.25,.14,.12],[659.25,.28,.12],[783.99,.42,.75]].forEach(([f,o,d])=>brass(ctx,m,f,t+o,d,.17));
+    brass(ctx,m,523.25,t+.42,.75,.1);brass(ctx,m,659.25,t+.42,.75,.1);cymbal(ctx,m,t+.42,.3,1.2);
+    whistle(ctx,m,t+1.1,.1);whistle(ctx,m,t+2.9,.08);
+    cheers(ctx,m,t+.9,3.2,5,.07);
+    applauseAt(ctx,m,t+.35,5.2,.2,46);
+  }else{
+    whistle(ctx,m,t0,.1);cheers(ctx,m,t0+.2,1,2,.06);
+    applauseAt(ctx,m,t0+.1,2.4,.17,38);
+  }
+}
+// TOURNAMENT: grand and cinematic. Timpani build, orchestral hit, harmonized brass fanfare, choir swell, fireworks, roaring crowd.
+function scoreTour(ctx,out,t0,full){
+  const m=ctx.createGain();m.gain.value=full?1:.8;m.connect(out);
+  if(full){
+    pad(ctx,m,t0,9.8,.05);
+    [[0,98],[.8,98],[1.6,98],[2.05,110],[2.3,123.5]].forEach(([o,f])=>timp(ctx,m,t0+o,f,.85));
+    const H=t0+2.6,u=.2,T=H+.5,F=T+20*u;
+    timp(ctx,m,H,98,1);timp(ctx,m,H,196,.6);cymbal(ctx,m,H,.55,2.6);
+    chord(ctx,m,[261.63,392,523.25,659.25,783.99],H,1.3,.16);
+    MELODY.forEach(([f,s,d])=>{brass(ctx,m,f,T+s*u,d*u*.95,.2);brass(ctx,m,HARM[f]||f/1.25,T+s*u,d*u*.95,.12)});
+    chord(ctx,m,[130.81,196,261.63,329.63,392,523.25,1046.5],F,2.4,.15);timp(ctx,m,F,98,1);cymbal(ctx,m,F,.5,2.8);
+    FW_T.forEach(o=>{launchSnd(ctx,m,H+o-.35,.05);boomSnd(ctx,m,H+o,.5)});
+    sparkle(ctx,m,H+.2,6,16,.05);
+    applauseAt(ctx,m,H+.8,8.8,.26,72);
+    cheers(ctx,m,H+1.2,6,9,.08);whistle(ctx,m,H+2.4,.09);whistle(ctx,m,H+4.3,.09);whistle(ctx,m,H+6,.08);
+  }else{
+    chord(ctx,m,[392,523.25,659.25,783.99],t0,.9,.15);cymbal(ctx,m,t0,.3,1.4);
+    sparkle(ctx,m,t0+.1,1.4,6,.05);
+    launchSnd(ctx,m,t0+.25,.05);boomSnd(ctx,m,t0+.6,.4);launchSnd(ctx,m,t0+.95,.05);boomSnd(ctx,m,t0+1.3,.4);
+    applauseAt(ctx,m,t0+.25,3,.22,56);cheers(ctx,m,t0+.4,1.4,3,.06);
+  }
 }
 // ---- confetti, side cannons and fireworks share one canvas loop
 let CPs=[],SPk=[],cfRaf=0,cfEnd=0;
-const CF_COLS=["#f5c542","#ffd966","#2f8cff","#ffffff","#ff6b6b","#6ee7a0"];
+const CF_COLS=["#f5c542","#ffd966","#2f8cff","#ffffff","#ff6b6b","#6ee7a0"],CF_GOLD=["#f5c542","#ffd966","#fff1b8","#ffffff","#d4a017"],BAL_COLS=["#ff6b6b","#f5c542","#2f8cff","#6ee7a0","#ff9bd2","#ffffff"];
+let BLs=[];
 function cfInit(ms){
   if(reduceMotion())return false;
   const cv=$("confetti");if(!cv||!cv.getContext)return false;
@@ -1165,8 +1292,23 @@ function cfStep(now){
     if(p.y>H+30||p.x<-60||p.x>W+60)return false;
     live++;
     ctx.save();ctx.globalAlpha=fade;ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.scale(1,Math.cos(p.s*2));
-    ctx.fillStyle=p.c;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();
+    ctx.fillStyle=p.c;
+    if(p.star){ctx.beginPath();for(let i=0;i<10;i++){const an=i*Math.PI/5-Math.PI/2,rr=i%2?p.w*.4:p.w*.95;ctx.lineTo(Math.cos(an)*rr,Math.sin(an)*rr)}ctx.closePath();ctx.fill()}
+    else ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+    ctx.restore();
     if(p.cannon)p.s+=p.ss;
+    return true;
+  });
+  BLs=BLs.filter(b=>{
+    b.y+=b.vy;b.s+=b.ss;b.x+=Math.sin(b.s)*.7;
+    if(b.y<-b.r*4)return false;
+    live++;
+    ctx.save();ctx.globalAlpha=fade;
+    ctx.strokeStyle="rgba(255,255,255,.55)";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(b.x,b.y+b.r*1.25);ctx.quadraticCurveTo(b.x+Math.sin(b.s*1.7)*9,b.y+b.r*2.2,b.x+Math.sin(b.s)*5,b.y+b.r*3.2);ctx.stroke();
+    ctx.fillStyle=b.c;ctx.beginPath();ctx.ellipse(b.x,b.y,b.r,b.r*1.2,0,0,6.283);ctx.fill();
+    ctx.beginPath();ctx.moveTo(b.x,b.y+b.r*1.2);ctx.lineTo(b.x-3.5,b.y+b.r*1.45);ctx.lineTo(b.x+3.5,b.y+b.r*1.45);ctx.closePath();ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.4)";ctx.beginPath();ctx.ellipse(b.x-b.r*.35,b.y-b.r*.4,b.r*.2,b.r*.34,-.5,0,6.283);ctx.fill();
+    ctx.restore();
     return true;
   });
   SPk=SPk.filter(s=>{
@@ -1180,29 +1322,45 @@ function cfStep(now){
     return true;
   });
   if(now<cfEnd&&live>0)cfRaf=requestAnimationFrame(cfStep);
-  else{cfRaf=0;CPs=[];SPk=[];ctx.clearRect(0,0,W,H);cv.hidden=true}
+  else{cfRaf=0;CPs=[];SPk=[];BLs=[];ctx.clearRect(0,0,W,H);cv.hidden=true}
 }
-const cfPiece=o=>Object.assign({w:6+Math.random()*6,h:9+Math.random()*8,r:Math.random()*6.28,vr:(Math.random()-.5)*.3,c:CF_COLS[Math.floor(Math.random()*CF_COLS.length)],s:Math.random()*6.28,ss:.04+Math.random()*.06},o);
-function confetti(n,ms){
+const cfPiece=o=>{const pal=o&&o.gold?CF_GOLD:CF_COLS;return Object.assign({w:6+Math.random()*6,h:9+Math.random()*8,r:Math.random()*6.28,vr:(Math.random()-.5)*.3,c:pal[Math.floor(Math.random()*pal.length)],star:!!(o&&o.gold)&&Math.random()<.4,s:Math.random()*6.28,ss:.04+Math.random()*.06},o)};
+function confetti(n,ms,gold){
   if(!cfInit(ms))return;
   const cv=$("confetti"),W=cv._W,H=cv._H;
-  for(let i=0;i<n;i++)CPs.push(cfPiece({x:Math.random()*W,y:-20-Math.random()*H*.7,vx:(Math.random()-.5)*1.6,vy:2+Math.random()*3.2}));
+  for(let i=0;i<n;i++)CPs.push(cfPiece({gold,x:Math.random()*W,y:-20-Math.random()*H*.7,vx:(Math.random()-.5)*1.6,vy:2+Math.random()*3.2}));
 }
-function cannons(n){
+function balloons(n){
+  if(!cfInit(7600))return;
+  const cv=$("confetti"),W=cv._W,H=cv._H;
+  for(let i=0;i<n;i++)BLs.push({x:W*(.06+Math.random()*.88),y:H+30+Math.random()*H*.5,vy:-(1.1+Math.random()*1.3),s:Math.random()*6.28,ss:.018+Math.random()*.02,r:15+Math.random()*11,c:BAL_COLS[Math.floor(Math.random()*BAL_COLS.length)]});
+}
+function cannons(n,gold){
   if(!cfInit(4200))return;
   const cv=$("confetti"),W=cv._W,H=cv._H;
   for(let i=0;i<n;i++){
     const left=i%2===0;
-    CPs.push(cfPiece({cannon:1,x:left?-10:W+10,y:H*(.72+Math.random()*.2),vx:(left?1:-1)*(3+Math.random()*6),vy:-(11+Math.random()*9)}));
+    CPs.push(cfPiece({gold,cannon:1,x:left?-10:W+10,y:H*(.72+Math.random()*.2),vx:(left?1:-1)*(3+Math.random()*6),vy:-(11+Math.random()*9)}));
   }
 }
-function burst(x,y){
-  const cols=["#ffd966","#f5c542","#ffffff","#7fb8ff","#ff9b9b"],c=cols[Math.floor(Math.random()*cols.length)];
-  for(let i=0;i<46;i++){
-    const a=Math.random()*6.283,sp=1.5+Math.random()*5.2,life=55+Math.floor(Math.random()*35);
+function burst(x,y,big){
+  const cols=["#ffd966","#f5c542","#ffffff","#7fb8ff","#ff9b9b"],c=cols[Math.floor(Math.random()*cols.length)],N=big?84:46;
+  for(let i=0;i<N;i++){
+    const a=big?i/N*6.283:Math.random()*6.283,sp=big?(i%2?4.6:2.7)*(.95+Math.random()*.1):1.5+Math.random()*5.2,life=big?70+Math.floor(Math.random()*30):55+Math.floor(Math.random()*35);
     SPk.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life,max:life,c:Math.random()<.25?"#ffffff":c});
   }
 }
+function fxBurst(big){
+  if(!cfInit(2600))return;
+  const cv=$("confetti"),W=cv._W,H=cv._H;
+  burst(W*(.14+Math.random()*.72),H*(.12+Math.random()*.36),big);
+}
+function grandFx(ms){
+  const g=$("grand");if(!g)return;
+  g.hidden=false;g.classList.remove("on","hit");void g.offsetWidth;g.classList.add("on");
+  clearTimeout(grandFx.t);grandFx.t=setTimeout(()=>{g.classList.remove("on","hit");g.hidden=true},ms);
+}
+function grandHit(){const g=$("grand");if(!g||g.hidden)return;g.classList.remove("hit");void g.offsetWidth;g.classList.add("hit")}
 function fireworks(k){
   if(!cfInit(4200))return;
   const cv=$("confetti"),W=cv._W,H=cv._H;
@@ -1214,22 +1372,44 @@ function popPodium(full){
   w.classList.remove("pop");void w.offsetWidth;w.classList.add("pop");
   clearTimeout(popPodium.t);popPodium.t=setTimeout(()=>w.classList.remove("pop"),full?5200:3200);
 }
-function celebrate(level,force){
+let celTimers=[],curRun=null;
+function celebrate(level,force,kind){
   const now=Date.now();
   if(!force&&level==="small"){
     const pc=$("podiumcard");
     if(now-celT<30000||!pc||pc.hidden)return;
   }
   celT=now;
-  const full=level==="full",snd=fanfare(full);
-  const go=(ms,fn)=>snd&&ms?setTimeout(fn,ms):fn();
-  if(full){
-    go(1000,()=>confetti(110,5600));
-    go(1400,()=>popPodium(true));
-    go(2000,()=>{cannons(70);fireworks(5);applause(5,.85)});
+  kind=kind||(RV==="tour"?"tour":"open");
+  const full=level==="full",tour=kind==="tour";
+  celTimers.forEach(clearTimeout);celTimers=[];
+  const ctx=muted?null:audioCtx();let playing=false;
+  if(curRun&&ctx){try{curRun.gain.cancelScheduledValues(ctx.currentTime);curRun.gain.setTargetAtTime(0,ctx.currentTime,.05)}catch(e){}}
+  if(ctx){
+    try{
+      const run=ctx.createGain();run.gain.value=1;run.connect(bus(ctx).in);curRun=run;
+      (tour?scoreTour:scoreOpen)(ctx,run,ctx.currentTime+.05,full);playing=true;
+    }catch(e){playing=false}
+  }
+  const lead=tour?(full?2.6:0):(full?.9:0);
+  const V=(sec,fn)=>{const ms=Math.max(0,sec-(playing?0:lead))*1000;if(ms<=0)fn();else celTimers.push(setTimeout(fn,ms))};
+  if(tour){
+    if(full){
+      V(0,()=>grandFx(playing?11000:8400));
+      V(2.6,()=>{grandHit();confetti(150,7200,true);cannons(80,true);popPodium(true)});
+      FW_T.forEach(o=>V(2.6+o,()=>fxBurst(true)));
+      V(6.2,()=>confetti(60,4200,true));
+    }else{
+      grandFx(3600);confetti(70,2800,true);popPodium(false);
+      V(.6,()=>fxBurst(true));V(1.3,()=>fxBurst(true));
+    }
   }else{
-    confetti(55,2600);popPodium(false);
-    go(420,()=>applause(2.2,.5));
+    if(full){
+      V(.9,()=>{confetti(100,5400);cannons(34);balloons(14);popPodium(true)});
+      V(2.8,()=>confetti(35,3000));
+    }else{
+      confetti(55,2600);balloons(5);popPodium(false);
+    }
   }
 }
 function setMuteIcon(){const b=$("mutebtn");if(b)b.textContent=muted?"🔇":"🔊"}
@@ -1385,12 +1565,12 @@ function setWin(r,i,side){
   const exp=was==null?before+1:(m.w==null?before-1:before);
   if(cnt()<exp)toast("Later rounds that depended on this match were reset.");
   save();render();
-  if(T.champ!=null&&pc==null)celebrate("full",true);
+  if(T.champ!=null&&pc==null)celebrate("full",true,"tour");
 }
 function setOpenWin(ci,side){
   const T=S.tour,r=T&&T.rounds[T.rounds.length-1],c=r&&r.courts[ci];
   if(!c)return;
-  const wasDone=openDone(T);c.win=c.win===side?null:side;save();render();if(!wasDone&&openDone(T))celebrate("full",true);
+  const wasDone=openDone(T);c.win=c.win===side?null:side;save();render();if(!wasDone&&openDone(T))celebrate("full",true,"tour");
 }
 function tpod(first,second,third){
   const col=(arr,cls,n)=>`<div class="tcol">${arr.map(e=>`<div class="tp">${tEnt(e,30)}</div>`).join("")}<div class="tstep ${cls}">${n}</div></div>`;
@@ -1492,7 +1672,7 @@ $("tourcard").onclick=e=>{
     else TS[k]=k==="mode"?+v:v;
     renderTour();return;
   }
-  if(t.id==="gorank"){setRV("tour");showTab("rank");celebrate("small",true)}
+  if(t.id==="gorank"){setRV("tour");showTab("rank");celebrate("small",true,"tour")}
   else if(t.id==="mkt")makeTournament();
   else if(t.id==="nextr"){
     const T=S.tour,last=T.rounds[T.rounds.length-1];
@@ -1764,7 +1944,7 @@ async function enterRoom(id){
     if(!s.exists()||x.closed){leaveRoom("The host closed the room.");return}
     RM.name=x.name;
     const firstSnap=!RM.snapSeen;RM.snapSeen=true;
-    if(!RM.host){const wasEnded=S.ended;applyState(x);render();if(!firstSnap&&S.ended&&!wasEnded)celebrate("full")}
+    if(!RM.host){const wasEnded=S.ended;applyState(x);render();if(!firstSnap&&S.ended&&!wasEnded)celebrate("full",false,"open")}
     updateBanner();renderRoom();
   },()=>{}));
   RM.unsubs.push(f.fs.onSnapshot(f.fs.collection(f.db,"rooms",id,"members"),qs=>{
@@ -2486,7 +2666,7 @@ $("cardmodal").addEventListener("click",e=>{
 $("sharecards").onclick=()=>openCards(podiumCards());
 // ---- hooks
 const _apply=applyState;applyState=function(d){const had=new Set((S.feed||[]).map(f=>f.id));_apply(d);(S.feed||[]).forEach(f=>{if(!had.has(f.id)&&Date.now()-f.t<90000)announce(f)})};
-const _cel=celebrate;celebrate=function(l,f){_cel(l,f);if(l==="full")setTimeout(()=>{try{toast("📸 Winner cards are ready. Tap Share cards on the podium.")}catch(e){}},2600)};
+const _cel=celebrate;celebrate=function(l,f,k){_cel(l,f,k);if(l==="full")setTimeout(()=>{try{toast("📸 Winner cards are ready. Tap Share cards on the podium.")}catch(e){}},2600)};
 const _rp=renderProfile;renderProfile=function(){_rp();decorateProfile()};
 
 const acctClick=async e=>{
