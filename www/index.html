@@ -97,7 +97,7 @@ button.big{width:100%;padding:14px;font-size:1.05rem}
 .champ{background:var(--a);border:1.5px solid var(--acc);border-radius:12px;padding:10px;margin:10px 0;text-align:center;font-weight:800}
 .chrow{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:6px;font-weight:700}
 .chrow .etxt{flex:none;font-size:1rem}
-body.ro #t-tour :is(button:not(.keep),input),body.ro #t-players :is(button,input),body.ro #t-play :is(button,input),body.ro #t-rank button:not(.keep){pointer-events:none;opacity:.6}
+body.ro #t-tour :is(button:not(.keep),input),body.ro #t-players :is(button,input),body.ro #t-play :is(button:not(.keep),input),body.ro #t-rank button:not(.keep){pointer-events:none;opacity:.6}
 .mrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
 .mrow small{display:block;color:var(--mute);font-size:.75rem}
 .mrow .row{gap:6px;flex-wrap:nowrap}
@@ -274,6 +274,35 @@ button.pnm{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.bell{animation:none}}
 .cbx h1{border:0;margin:0;font-size:1.6rem;color:var(--acc)}
 #calltxt{font-size:1.15rem;font-weight:700}
+#ratemodal,#cardmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:56;padding:16px}
+#ratemodal[hidden],#cardmodal[hidden]{display:none}
+#ratemodal .avbox,#cardmodal .avbox{max-height:92vh;overflow:auto}#cardmodal .avbox{max-width:420px}
+.cl-extra{padding:0 10px 10px}
+.cl-note{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-size:.85rem;line-height:1.35}
+.cl-note.ft{border-color:var(--acc)}
+.cl-rate{width:100%;margin-top:8px}
+.cl-mood{margin-top:10px}.cl-mood small{display:block;color:var(--mute);margin-bottom:4px}
+.cl-mood>div{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.cl-mood button{display:flex;flex-direction:column;align-items:center;gap:0;padding:6px 2px;font-size:1.2rem;line-height:1.2}
+.cl-mood button span{font-size:.64rem;color:var(--mute)}.cl-mood button.on{background:var(--acc);color:var(--accink)}.cl-mood button.on span{color:var(--accink)}
+.cl-rival,.cl-chem,.cl-rep,.cl-feed{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--line);text-align:center}
+.cl-rt{font-weight:800;letter-spacing:.08em;color:var(--acc);font-size:.8rem}
+.cl-rv{font-size:1.15rem;font-weight:800;margin:2px 0}.cl-rs{font-size:.85rem;color:var(--mute)}
+.cl-rl{font-weight:800;margin-top:4px}.cl-rn{font-size:.85rem;margin-top:2px}.cl-fl{font-size:1.2rem}.cl-big{font-size:2rem;font-weight:800;color:var(--acc)}
+.cl-feed{text-align:left}.cl-feed small{display:block;color:var(--mute);margin-top:2px}
+.cl-rep{text-align:left}.cl-rep>div:not(.cl-rt){margin-top:4px}
+.cl-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.cl-ic{font-size:1.4rem}.cl-tx{flex:1;min-width:0}.cl-tx b{display:block}.cl-tx small{color:var(--mute)}.cl-cam{padding:6px 10px}
+.cl-pass{margin-bottom:10px}.cl-pass .pfgrid{margin-top:6px}
+.cl-badges{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.cl-badge{display:flex;flex-direction:column;align-items:center;padding:8px 4px;opacity:.55}.cl-badge.on{opacity:1;border-color:var(--acc)}
+.cl-badge span{font-size:1.4rem}.cl-badge small{color:var(--mute);font-size:.7rem}
+.cl-sp{margin:8px 0;color:var(--mute);font-size:.9rem}
+.cl-rt2{padding:10px 0;border-top:1px solid var(--line)}
+.cl-stars{display:flex;gap:4px;margin:6px 0}.cl-stars button{flex:1;font-size:1.3rem;padding:6px 0;color:var(--mute)}.cl-stars button.on{color:var(--accink);background:var(--acc)}
+.cl-tags{display:flex;flex-wrap:wrap;gap:6px}.cl-tags button{padding:6px 10px;font-size:.8rem}.cl-tags button.on{background:var(--acc);color:var(--accink)}
+#pfmodal .avbox{max-height:92vh;overflow:auto}
+.cl-pass .pfgrid{grid-template-columns:repeat(4,1fr);gap:6px}.cl-pass .pft{padding:6px 4px;text-align:center}.cl-pass .pft small{font-size:.62rem}.cl-pass .pft b{font-size:1rem}
 </style>
 </head>
 <body>
@@ -344,11 +373,13 @@ button.pnm{cursor:pointer}
 
 </section>
 <section id="t-rank" class="tab" hidden>
-<div class="row rkbar"><div class="seg" id="rkseg" role="tablist" aria-label="Ranking view"><button class="keep on" data-rv="open" role="tab">🏓 Open play</button><button class="keep" data-rv="tour" role="tab">🏅 Tournament</button></div><button class="keep" id="celebtn" aria-label="Replay celebration" title="Replay celebration">🎉</button><button class="keep" id="mutebtn" aria-label="Sound on or off" title="Sound on or off">🔊</button></div>
+<div class="row rkbar"><div class="seg" id="rkseg" role="tablist" aria-label="Ranking view"><button class="keep on" data-rv="open" role="tab">🏓 Open</button><button class="keep" data-rv="tour" role="tab">🏆 Tourney</button><button class="keep" data-rv="club" role="tab">🏅 Club</button></div><button class="keep" id="celebtn" aria-label="Replay celebration" title="Replay celebration">🎉</button><button class="keep" id="mutebtn" aria-label="Sound on or off" title="Sound on or off">🔊</button></div>
+<div class="card" id="feedcard" hidden></div>
 <div class="v-open">
 <div class="card" id="endedcard" hidden>
 <h2>🏁 Open play ended</h2>
 <div class="empty" id="endedsum"></div>
+<div id="endedrep"></div>
 <button class="p big" id="newplay" style="margin-top:10px">Start new open play</button>
 </div>
 </div>
@@ -360,6 +391,7 @@ button.pnm{cursor:pointer}
 <div class="horns" aria-hidden="true"><span class="horn l">🎺</span><span class="horn r">🎺</span><span class="note" style="left:17%;top:16%;--d:0s">♪</span><span class="note" style="left:23%;top:12%;--d:.35s">♫</span><span class="note" style="left:83%;top:16%;--d:.15s">♫</span><span class="note" style="left:77%;top:12%;--d:.5s">♪</span></div>
 <div class="podium" id="podium"></div></div>
 <div class="empty" style="margin-top:8px">Tap a paddle or avatar to see a player's rating and details.</div>
+<button class="keep" id="sharecards" style="margin-top:8px">📸 Share cards</button>
 </div>
 <div class="card v-open">
 <h2>Ranking</h2>
@@ -367,6 +399,7 @@ button.pnm{cursor:pointer}
 <div class="empty" id="rnote" style="margin-top:8px">Tap 🏆 Winner on the winning side of each court (scores are optional) and the ranking updates live. Tap again to undo. Ranked by win %, then point difference. Rating starts at the level you set and moves with results. Pts = points scored–allowed. Pairings use rating, so teams are evenly matched. 🔒 means the player chose to hide their rating.</div>
 </div>
 <div class="card v-tour" id="tourrank" hidden></div>
+<div class="v-club" id="clubview" hidden></div>
 </section>
 <section id="t-tour" class="tab" hidden>
 <div class="card" id="tourcard"></div>
@@ -439,6 +472,8 @@ button.pnm{cursor:pointer}
 <input type="file" id="avfile" accept="image/*" hidden>
 <input type="file" id="avcam" accept="image/*" capture="user" hidden>
 </div></div>
+<div id="ratemodal" hidden><div class="avbox" role="dialog" aria-modal="true" aria-label="Rate players"><div id="rtbody"></div></div></div>
+<div id="cardmodal" hidden><div class="avbox" role="dialog" aria-modal="true" aria-label="Share card"><div id="cdbody"></div></div></div>
 <div id="pfmodal" hidden><div class="avbox" role="dialog" aria-modal="true" aria-label="Player details"><div id="pfbody"></div></div></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -556,7 +591,7 @@ function generate(){
   const pool=S.players.filter(p=>!p.hold);
   const maxCourts=Math.min(S.courts,Math.floor(pool.length/per));
   if(maxCourts<1){const m=$("msg");m.textContent="Need at least "+per+" available players for "+(S.mode===2?"doubles":"singles")+".";setTimeout(()=>m.textContent="",4000);return}
-  if(S.cur)S.hist.push(...S.cur.courts.filter(winner).map(c=>({A:c.A,B:c.B,sa:c.sa,sb:c.sb,win:winner(c)})));
+  if(S.cur)S.hist.push(...S.cur.courts.map((c,i)=>[c,i]).filter(z=>winner(z[0])).map(z=>hrow(z[0],z[1])));
   const need=maxCourts*per;
   const order=queue(pool);
   const active=order.slice(0,need).map(p=>p.id), bench=order.slice(need).map(p=>p.id);
@@ -611,11 +646,12 @@ function renderRank(){
   document.querySelectorAll("#rkseg [data-rv]").forEach(b=>{const on=b.dataset.rv===RV;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});
   document.querySelectorAll(".v-open").forEach(x=>x.hidden=RV!=="open");
   document.querySelectorAll(".v-tour").forEach(x=>x.hidden=RV!=="tour");
+  document.querySelectorAll(".v-club").forEach(x=>x.hidden=RV!=="club");
   const rows=stats();
   $("rank").innerHTML=rows.length?rows.map((x,i)=>{
     const g=x.w+x.l,rt0=x.p.rt??3,dl=x.rt-rt0,hr=!!x.p.hr,tp=g&&i<3;
     return `<tr${tp?' class="top"':""}><td>${g?(tp?medal(i):i+1):"–"}</td><td class="${x.p.hold?"held":""}"><span class="pn">${av(x.p,22)}<span>${esc(x.p.name)}${gsym(x.p.g)}${x.p.hold?" (on hold)":""}${hr?"":`<small class="lv">${tier(x.rt)} · ${level(x.rt)}</small>`}</span></span></td><td>${hr?"🔒":`${badge(x.rt)} ${x.rt.toFixed(2)}${Math.abs(dl)>=.01?`<small class="dl ${dl>0?"up":"dn"}">${dl>0?"+":""}${dl.toFixed(2)}</small>`:""}`}</td><td>${x.w}-${x.l}</td><td>${g?Math.round(100*x.w/g)+"%":"–"}</td><td>${g?(x.d>0?"+":"")+x.d:"–"}</td><td>${x.pf||x.pa?x.pf+"-"+x.pa:"–"}</td></tr>`}).join(""):'<tr><td colspan="7" class="empty">No players yet.</td></tr>';
-  const P=podData(),has=P.slots.some(Boolean);
+  const P=podData(),has=RV!=="club"&&P.slots.some(Boolean);
   $("podiumcard").hidden=!has;
   if(has){
     $("podh").textContent=P.title;
@@ -626,9 +662,10 @@ function renderRank(){
     $("cbanner").innerHTML=L?(P.final?`<span class="hn">🎺</span> ${esc(L.label)} ${L.pl.length>1?"are":"is"} the champion! <span class="hn">🎺</span>`:`🏆 ${esc(L.label)} ${L.pl.length>1?"are":"is"} in the lead`):"";
   }
   renderTourRank();
+  renderClubAll();
 }
-let RV="open";try{RV=localStorage.getItem("wp-rv")==="tour"?"tour":"open"}catch(e){}
-function setRV(v){RV=v==="tour"?"tour":"open";try{localStorage.setItem("wp-rv",RV)}catch(e){}renderRank();fixAv()}
+let RV="open";try{{const z=localStorage.getItem("wp-rv");RV=z==="tour"||z==="club"?z:"open"}}catch(e){}
+function setRV(v){RV=v==="tour"||v==="club"?v:"open";try{localStorage.setItem("wp-rv",RV)}catch(e){}renderRank();fixAv()}
 const medal=i=>["🥇","🥈","🥉"][i]||"";
 const gsym=g=>g==="m"?'<span class="gs m" title="Male">♂</span>':g==="f"?'<span class="gs f" title="Female">♀</span>':"";
 const gtxt=g=>g==="m"?"♂ Male":g==="f"?"♀ Female":"Gender hidden";
@@ -802,7 +839,7 @@ function nextMatch(i){
   if(!S.cur)return;
   const old=S.cur.courts[i];
   if(!old||!winner(old))return;
-  S.hist.push({A:old.A,B:old.B,sa:old.sa,sb:old.sb,win:winner(old)});
+  S.hist.push(hrow(old,i));
   const per=S.mode===2?4:2,n=per/2;
   const onCourt=new Set();
   S.cur.courts.forEach((c,j)=>{if(j!==i){c.A.forEach(x=>onCourt.add(x));c.B.forEach(x=>onCourt.add(x))}});
@@ -861,7 +898,7 @@ function renderDeck(){
   $("deckhint").textContent=pend?"Declare winners for the current round first so pairings use the latest results.":"Courts are filled by level and teams are balanced by wins and losses when you tap Generate Round.";
 }
 function render(){
-  RT=ratings();
+  RT=ratings();syncLedger();
   const act=S.players.filter(p=>!p.hold).length;
   $("cnt").textContent=act+(act<S.players.length?" of "+S.players.length:"");
   $("chips").innerHTML=S.players.length?S.players.map(p=>`<span class="chip${p.hold?" hold":""}"><button class="avb" data-av="${p.id}" aria-label="Change avatar">${av(p,30)}</button><span class="nm">${esc(p.name)}${gsym(p.g)}</span> <small>${badge(RT[p.id]??3)} ${(RT[p.id]??3).toFixed(1)} · ${p.hold?"on hold":p.played+" played"}</small><button class="h" data-h="${p.id}">${p.hold?"Resume":"Hold"}</button><button class="x" data-r="${p.id}" aria-label="Remove">×</button></span>`).join(""):'<span class="empty">Add the players who showed up.</span>';
@@ -871,6 +908,7 @@ function render(){
   if(S.cur){
     o.hidden=false;$("rt").textContent="Round "+S.round;
     $("courts").innerHTML=S.cur.courts.map((c,i)=>`<div class="court">${head(c,i)}<div class="teams"><div class="team a">${team(c,"A")}</div><div class="vs">vs</div><div class="team b">${team(c,"B")}</div></div><div class="wins"><button data-w="a" data-c="${i}" ${isOpen(c)?"disabled":""} class="${winner(c)==='a'?'on':''}">🏆 Winner</button><button data-w="b" data-c="${i}" ${isOpen(c)?"disabled":""} class="${winner(c)==='b'?'on':''}">🏆 Winner</button></div><div class="score"><input type="number" inputmode="numeric" min="0" placeholder="Score (optional)" data-c="${i}" data-s="sa" value="${c.sa??""}"><span>–</span><input type="number" inputmode="numeric" min="0" placeholder="Score (optional)" data-c="${i}" data-s="sb" value="${c.sb??""}"></div><div class="nextm"><button class="p" data-next="${i}" ${winner(c)?"":"disabled"}>✅ Match done · Next match ▶</button>${winner(c)?"":'<small>Pick a winner to free this court</small>'}</div></div>`).join("");
+    decorateCourts();
     const b=S.cur.bench.filter(id=>S.players.some(p=>p.id===id&&!p.hold));
     $("bench").innerHTML=b.length?"<strong>Sitting out:</strong> "+b.map(sn).join(", "):"Everyone available is playing this round.";
   }else o.hidden=true;
@@ -898,6 +936,7 @@ $("courts").oninput=e=>{
   const t=e.target,c=S.cur&&S.cur.courts[+t.dataset.c];if(!c||!t.dataset.s)return;
   c[t.dataset.s]=t.value===""?null:Math.max(0,parseInt(t.value,10));
   if(valid(c))c.win=c.sa>c.sb?"a":"b";
+  onDecide(c,+t.dataset.c);
   document.querySelectorAll('[data-w][data-c="'+t.dataset.c+'"]').forEach(x=>x.classList.toggle("on",winner(c)===x.dataset.w));
   {const nb=document.querySelector('[data-next="'+t.dataset.c+'"]');if(nb){nb.disabled=!winner(c);const h=nb.parentNode.querySelector("small");if(h)h.hidden=!!winner(c)}}
   save();renderRank();
@@ -917,6 +956,7 @@ $("courts").onclick=e=>{
   const c=S.cur.courts[+b.dataset.c],w=b.dataset.w;
   if(winner(c)===w){c.win=null;c.sa=c.sb=null}
   else{c.win=w;if(valid(c)&&(c.sa>c.sb?"a":"b")!==w)c.sa=c.sb=null}
+  onDecide(c,+b.dataset.c);
   save();render();
 };
 $("m1").onclick=()=>{S.mode=1;save();render()};
@@ -1211,10 +1251,10 @@ function arm(id,label,fn){
     b.dataset.arm="1";b.textContent=label;b.classList.add("danger");t=setTimeout(off,4000);
   };
 }
-function resetRounds(){const R=ratings(true),G=RG;S.players.forEach(p=>{p.rt=Math.round(R[p.id]*100)/100;p.gm=G[p.id];p.played=0;p.sat=0});S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.ended=false;S.endRounds=0;S.sid=null;S.endedAt=null;save();render()}
+function resetRounds(){const R=ratings(true),G=RG;S.players.forEach(p=>{p.rt=Math.round(R[p.id]*100)/100;p.gm=G[p.id];p.played=0;p.sat=0});S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.ended=false;S.endRounds=0;S.sid=null;S.endedAt=null;S.feed=[];S.sk=null;S.sa=null;save();render()}
 function endPlay(){
   if(!S.cur)return;
-  S.hist.push(...S.cur.courts.filter(winner).map(c=>({A:c.A,B:c.B,sa:c.sa,sb:c.sb,win:winner(c)})));
+  S.hist.push(...S.cur.courts.map((c,i)=>[c,i]).filter(z=>winner(z[0])).map(z=>hrow(z[0],z[1])));
   S.cur=null;S.ended=true;S.endRounds=S.round;S.endedAt=Date.now();
   setRV("open");save();render();celebrate("full");showTab("rank");
 }
@@ -1731,6 +1771,7 @@ async function enterRoom(id){
     if(!RM)return;
     RM.members=qs.docs.map(m=>Object.assign({uid:m.id},m.data())).sort((a,b)=>a.joinedAt-b.joinedAt);
     if(RM.host){let ch=false;S.players.forEach(p=>{if(!p.mid)return;const m=RM.members.find(x=>x.uid===p.mid);if(m&&m.tol>=1&&m.tol<=5&&p.tol!==m.tol){p.tol=m.tol;ch=true}});if(ch)save()}
+    ingestAll();
     if(RM.members.some(m=>m.uid===ME.uid))RM.seen=true;
     else if(RM.seen&&!RM.host){leaveRoom("You were removed from the room.",true);return}
     renderRoom();
@@ -1987,6 +2028,467 @@ async function settleSession(){
     await loadHistory();renderAcct();toast("Open play saved to your account history.");
   }catch(e){delete SIG[key]}
 }
+// ===================== CLUB: ledger, rivalries, upsets, moods, chemistry, passport =====================
+// S.club is kept inside the room/offline state, so it survives "start new open play" and follows the host's room.
+const gid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const CL=()=>{const c=S.club||(S.club={});c.g=c.g||[];c.t=c.t||[];c.n=c.n||{};c.sp=c.sp||{};c.rs=c.rs||[];return c};
+const pkey=p=>p?(p.mid?"u:"+p.mid:"n:"+String(p.name||"").trim().toLowerCase()):"";
+const keyId=id=>pkey(S.players.find(x=>x.id===id));
+const keyQ=q=>{const p=S.players.find(x=>x.id===q.id);return p?pkey(p):(q.name?"n:"+String(q.name).trim().toLowerCase():"")};
+const kname=k=>{const x=CL().n[k];return x?x.n:String(k).replace(/^[un]:/,"")};
+const MOODS=[["😂","Wild","wild games","wild game"],["🔥","Intense","intense games","intense game"],["😎","Easy","easy games","easy game"],["💀","Brutal","brutal games","brutal game"],["🤯","Crazy comeback","comebacks","comeback"],["❤️","Great game","great games","great game"]];
+const SPTAGS=["Fair calls","Friendly","On time","Encouraging","Competitive but respectful"];
+const ymOf=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")};
+const ymName=ym=>{const a=ym.split("-");return new Date(+a[0],+a[1]-1,1).toLocaleDateString(undefined,{month:"long",year:"numeric"})};
+const hrow=(c,i)=>({A:c.A,B:c.B,sa:c.sa,sb:c.sb,win:winner(c),id:c.id||gid(),t:Date.now(),ct:i+1,up:c.up||0,mo:c.mo});
+const plName=id=>{const p=S.players.find(x=>x.id===id);return p?p.name:"?"};
+const names=ids=>ids.map(plName).map(esc).join(" &amp; ");
+const kn=ks=>ks.map(kname).map(esc).join(" &amp; ");
+function remember(p){const k=pkey(p);if(k)CL().n[k]={n:p.name,a:p.av&&p.av.t==="e"?p.av.v:""}}
+function rowsFrom(list,k,s){
+  return list.map(h=>{const A=h.A.map(keyId).filter(Boolean),B=h.B.map(keyId).filter(Boolean);
+    return A.length&&B.length?{i:h.id,d:h.t||Date.now(),s,k,A,B,sa:h.sa,sb:h.sb,w:h.win,ct:h.ct||0,up:h.up||0,mo:h.mo}:null}).filter(Boolean);
+}
+// move finished games and finished tournaments into the permanent ledger (host / offline device only)
+function syncLedger(){
+  if(RM&&!RM.host)return;
+  const c=CL(),have=new Set(c.g.map(r=>r.i));let ch=false;
+  if(!S.sk){S.sk=Date.now();ch=true}
+  S.hist.forEach(h=>{if(!h.id){h.id=gid();ch=true}});
+  S.players.forEach(remember);
+  const fresh=rowsFrom(S.hist.filter(h=>!have.has(h.id)),"o",S.sk);
+  if(fresh.length){c.g.push(...fresh);ch=true}
+  const T=S.tour;
+  if(T&&!T.arch){
+    const done=T.kind==="ko"?T.champ!=null:openDone(T);
+    if(done){
+      T.tid=T.tid||T.created||Date.now();T.arch=1;ch=true;
+      const rows=[],now=Date.now(),sid="t"+T.tid;let chk=[],pl=[];
+      if(T.kind==="ko"){
+        T.rounds.forEach((rd,r)=>rd.forEach((m,i)=>{
+          if(m.a==null||m.b==null||m.w==null)return;
+          const A=T.ents[m.a].pl.map(keyQ).filter(Boolean),B=T.ents[m.b].pl.map(keyQ).filter(Boolean);
+          if(A.length&&B.length)rows.push({i:sid+"r"+r+"m"+i,d:now,s:sid,k:"t",A,B,w:m.w===m.a?"a":"b",ct:0,up:0});
+        }));
+        chk=T.ents[T.champ].pl.map(keyQ).filter(Boolean);
+        T.ents.forEach(e=>e.pl.forEach(q=>pl.push(keyQ(q))));
+      }else{
+        T.rounds.forEach((rd,r)=>rd.courts.forEach((ct,i)=>{
+          if(!ct.win)return;
+          const A=ct.A.map(id=>keyQ(oInfo(T,id))).filter(Boolean),B=ct.B.map(id=>keyQ(oInfo(T,id))).filter(Boolean);
+          if(A.length&&B.length)rows.push({i:sid+"r"+r+"c"+i,d:now,s:sid,k:"t",A,B,w:ct.win,ct:i+1,up:0});
+        }));
+        const top=openStats(T).filter(x=>x.w+x.l>0)[0];if(top)chk=[keyQ(top.q)];
+        T.pl.forEach(q=>pl.push(keyQ(q)));
+      }
+      rows.forEach(r=>{if(!have.has(r.i))c.g.push(r)});
+      c.t.push({i:sid,k:"t",d:now,nm:T.name||"Tournament",ch:chk.filter(Boolean),pl:[...new Set(pl.filter(Boolean))]});
+    }
+  }
+  if(S.ended&&S.hist.length&&S.sa!==S.sk){
+    const top=stats().filter(x=>x.w+x.l>0);
+    if(top.length){
+      S.sa=S.sk;ch=true;
+      c.t.push({i:"s"+S.sk,k:"o",d:S.endedAt||Date.now(),nm:RM?RM.name:"Open play",ch:[pkey(top[0].p)].filter(Boolean),pl:top.map(x=>pkey(x.p)).filter(Boolean)});
+    }
+  }
+  if(S.cur&&S.feed){const bad=new Set(S.cur.courts.filter(x=>x.id&&!winner(x)).map(x=>x.id)),n=S.feed.length;S.feed=S.feed.filter(f=>!bad.has(f.ref));if(S.feed.length!==n)ch=true}
+  if(c.g.length>800){c.g.splice(0,c.g.length-800);ch=true}
+  if(c.t.length>200)c.t.splice(0,c.t.length-200);
+  if(ch)save();
+}
+// ledger plus games decided on the courts right now
+function liveRows(){
+  const rows=CL().g.slice();
+  if(S.cur){
+    const cur=S.cur.courts.map((c,i)=>({c,i})).filter(x=>winner(x.c)).map(x=>Object.assign({},x.c,{win:winner(x.c),ct:x.i+1,id:x.c.id||"live"+x.i}));
+    rows.push(...rowsFrom(cur,"o",S.sk).map(r=>Object.assign(r,{live:1})));
+  }
+  return rows;
+}
+function rivalries(rows,min){
+  const m={};
+  rows.forEach(r=>r.A.forEach(a=>r.B.forEach(b=>{
+    const lo=a<b?a:b,hi=a<b?b:a,k=lo+"|"+hi,x=m[k]||(m[k]={a:lo,b:hi,g:0,wa:0,wb:0});
+    x.g++;(r.w==="a"?a:b)===lo?x.wa++:x.wb++;
+  })));
+  return Object.values(m).filter(x=>x.g>=(min||3)).sort((p,q)=>q.g-p.g||Math.abs(p.wa-p.wb)-Math.abs(q.wa-q.wb));
+}
+function rivalHTML(x,mini){
+  const a=esc(kname(x.a)),b=esc(kname(x.b)),even=x.wa===x.wb,lead=x.wa>x.wb?a:b,lo=Math.max(x.wa,x.wb),tr=Math.min(x.wa,x.wb);
+  return `<div class="cl-rival"><div class="cl-rt">⚔️ RIVALRY</div><div class="cl-rv">${a} vs ${b}</div>
+<div class="cl-rs">Games: <b>${x.g}</b> · ${a}: <b>${x.wa}</b> win${x.wa===1?"":"s"} · ${b}: <b>${x.wb}</b> win${x.wb===1?"":"s"}</div>
+<div class="cl-rl">${even?"DEAD EVEN.":lead+" leads "+lo+"–"+tr+"."}</div>${mini?"":`<div class="cl-rn">${even?"Next game: who takes the lead?":"Next game: can "+(x.wa>x.wb?b:a)+" even it up?"}</div>`}</div>`;
+}
+function chem(rows,a,b){
+  const x=a<b?a:b,y=a<b?b:a;let g=0,w=0;
+  rows.forEach(r=>["A","B"].forEach(s=>{if(r[s].includes(x)&&r[s].includes(y)){g++;if(r.w===(s==="A"?"a":"b"))w++}}));
+  const wr=g?w/g:0;return {g,w,wr,score:Math.round(100*(.75*wr+.25*Math.min(1,g/12)))};
+}
+function allChem(rows,min){
+  const m={};
+  rows.forEach(r=>["A","B"].forEach(s=>{
+    const t=r[s],l=s==="A"?"a":"b";
+    for(let i=0;i<t.length;i++)for(let j=i+1;j<t.length;j++){
+      const a=t[i]<t[j]?t[i]:t[j],b=t[i]<t[j]?t[j]:t[i],k=a+"|"+b,x=m[k]||(m[k]={a,b,g:0,w:0});
+      x.g++;if(r.w===l)x.w++;
+    }
+  }));
+  return Object.values(m).filter(x=>x.g>=(min||3)).map(x=>Object.assign(x,{wr:x.w/x.g,score:Math.round(100*(.75*(x.w/x.g)+.25*Math.min(1,x.g/12)))})).sort((p,q)=>q.score-p.score||q.g-p.g);
+}
+const flames=s=>"🔥".repeat(Math.max(1,Math.round(s/20)));
+const chemMsg=s=>s>=80?"You two should probably stop splitting up. 😂":s>=60?"Good vibes. Keep partnering up!":"Still finding your rhythm. Keep playing together!";
+function chemHTML(x){
+  return `<div class="cl-chem"><div class="cl-rt">🤝 TEAM CHEMISTRY</div><div class="cl-rv">${kn([x.a,x.b])}</div>
+<div class="cl-fl">${flames(x.score)}</div><div class="cl-big">${x.score}%</div>
+<div class="cl-rs">${x.g} games together · ${x.w} win${x.w===1?"":"s"} · ${Math.round(100*x.wr)}% win rate</div><div class="cl-rn">${chemMsg(x.score)}</div></div>`;
+}
+// Elo replay over the ledger (everyone starts at 3.0), used for "most improved"
+function eloDeltas(rows){
+  const R={},g={},out=[];
+  rows.slice().sort((a,b)=>a.d-b.d).forEach(r=>{
+    if(!r.A.length||!r.B.length||!r.w)return;
+    const avg=a=>a.reduce((t,k)=>t+(R[k]==null?3:R[k]),0)/a.length;
+    const ea=1/(1+Math.pow(10,(avg(r.B)-avg(r.A))/1.5)),sa=r.w==="a"?1:0,dl={};
+    const upd=(ids,sc,e)=>ids.forEach(k=>{const kk=Math.max(.08,.3/(1+(g[k]||0)*.15)),d=kk*(sc-e);R[k]=clampR((R[k]==null?3:R[k])+d);g[k]=(g[k]||0)+1;dl[k]=d});
+    upd(r.A,sa,ea);upd(r.B,1-sa,1-ea);out.push({d:r.d,dl});
+  });
+  return out;
+}
+function monthBoard(rows,ym){
+  const inM=rows.filter(r=>ymOf(r.d)===ym),per={};
+  inM.forEach(r=>[...r.A.map(k=>[k,"a"]),...r.B.map(k=>[k,"b"])].forEach(([k,s])=>{const x=per[k]||(per[k]={g:0,w:0});x.g++;if(r.w===s)x.w++}));
+  const E=Object.entries(per),out=[];
+  const best=(arr,f)=>arr.slice().sort((a,b)=>f(b)-f(a)||b[1].g-a[1].g)[0];
+  if(E.length){
+    const mw=best(E,e=>e[1].w);if(mw&&mw[1].w>0)out.push({cat:"Most wins",ic:"🏆",keys:[mw[0]],stat:mw[1].w+" wins"});
+    const br=best(E.filter(e=>e[1].g>=5),e=>e[1].w/e[1].g);if(br)out.push({cat:"Best win rate",ic:"🎯",keys:[br[0]],stat:Math.round(100*br[1].w/br[1].g)+"% · "+br[1].g+" games"});
+    const mg=best(E,e=>e[1].g);if(mg)out.push({cat:"Most games played",ic:"🏓",keys:[mg[0]],stat:mg[1].g+" games"});
+  }
+  const gain={},cnt={};
+  eloDeltas(rows).filter(x=>ymOf(x.d)===ym).forEach(x=>Object.keys(x.dl).forEach(k=>{gain[k]=(gain[k]||0)+x.dl[k];cnt[k]=(cnt[k]||0)+1}));
+  const mi=Object.keys(gain).filter(k=>cnt[k]>=4&&gain[k]>0).sort((a,b)=>gain[b]-gain[a])[0];
+  if(mi)out.push({cat:"Most improved",ic:"📈",keys:[mi],stat:"+"+gain[mi].toFixed(2)+" rating"});
+  const bp=allChem(inM,3).sort((a,b)=>b.wr-a.wr||b.g-a.g)[0];
+  if(bp)out.push({cat:"Best partners",ic:"🤝",keys:[bp.a,bp.b],stat:bp.w+"-"+(bp.g-bp.w)+" together"});
+  const bu=inM.filter(r=>r.up>0).sort((a,b)=>b.up-a.up)[0];
+  if(bu){const wk=bu.w==="a"?bu.A:bu.B,lk=bu.w==="a"?bu.B:bu.A;out.push({cat:"Biggest upset",ic:"😈",keys:wk,stat:"beat "+lk.map(kname).join(" & ")+(Number.isFinite(bu.sa)&&Number.isFinite(bu.sb)?" "+Math.max(bu.sa,bu.sb)+"–"+Math.min(bu.sa,bu.sb):"")});}
+  return {out,games:inM.length};
+}
+function passport(key,rows){
+  const c=CL(),mine=rows.filter(r=>r.A.includes(key)||r.B.includes(key)).sort((a,b)=>a.d-b.d);
+  let g=0,w=0,st=0,best=0;const ct=new Set(),pa=new Set(),op=new Set(),ses=new Set();
+  mine.forEach(r=>{
+    const side=r.A.includes(key)?"A":"B",win=r.w===(side==="A"?"a":"b");
+    g++;win?(w++,st++,best=Math.max(best,st)):st=0;
+    if(r.ct)ct.add(r.ct);
+    r[side].forEach(k=>{if(k!==key)pa.add(k)});(side==="A"?r.B:r.A).forEach(k=>op.add(k));
+    if(r.k==="o")ses.add(r.s);
+  });
+  const people=new Set([...pa,...op]);
+  const riv=rivalries(rows,6).some(x=>(x.a===key&&x.wa>x.wb)||(x.b===key&&x.wb>x.wa));
+  const months=[...new Set(rows.map(r=>ymOf(r.d)))];
+  const impr=months.some(m=>{const mb=monthBoard(rows,m).out.find(o=>o.cat==="Most improved");return mb&&mb.keys[0]===key});
+  return {g,w,courts:ct.size,partners:pa.size,opps:op.size,people:people.size,
+    tours:c.t.filter(t=>t.k==="t"&&t.pl.includes(key)).length,opens:ses.size,
+    titles:c.t.filter(t=>t.ch.includes(key)).length,best,riv,impr};
+}
+const BADGES=[
+  ["🏆","Champion",p=>p.titles>=1,p=>p.titles+"/1 title"],
+  ["🔥","10-win streak",p=>p.best>=10,p=>Math.min(p.best,10)+"/10 in a row"],
+  ["🌎","Played 50 players",p=>p.people>=50,p=>Math.min(p.people,50)+"/50 players"],
+  ["🤝","20 different partners",p=>p.partners>=20,p=>Math.min(p.partners,20)+"/20 partners"],
+  ["⚔️","Rivalry winner",p=>p.riv,()=>"lead a 6+ game rivalry"],
+  ["📈","Most improved",p=>p.impr,()=>"top monthly climber"]];
+function passHTML(p){
+  const cell=(l,v)=>`<div class="pft"><small>${l}</small><b>${v}</b></div>`;
+  return `<div class="cl-pass"><div class="cl-rt">🥒 WATAPICKLE PASSPORT</div><div class="pfgrid">${cell("Games played",p.g)}${cell("Courts played",p.courts)}${cell("Partners",p.partners)}${cell("Opponents",p.opps)}${cell("Tournaments",p.tours)}${cell("Openplays",p.opens)}${cell("Titles",p.titles)}${cell("Best win streak",p.best)}</div>
+<div class="cl-badges">${BADGES.map((b,i)=>{const on=b[2](p);return `<button class="keep cl-badge${on?" on":""}" data-bcard="${i}" ${on?"":"disabled"} title="${on?"Tap for a share card":"Locked"}"><span>${b[0]}</span><b>${b[1]}</b>${on?"":`<small>${b[3](p)}</small>`}</button>`}).join("")}</div></div>`;
+}
+function spInfo(key){
+  const x=CL().sp[key];
+  if(!x||x.n<3)return {ok:false,n:x?x.n:0};
+  const top=x.tg.map((n,i)=>[n,i]).sort((a,b)=>b[0]-a[0])[0];
+  return {ok:true,n:x.n,avg:x.sum/x.n,tag:top&&top[0]>0?SPTAGS[top[1]]:""};
+}
+function spHTML(key){
+  const s=spInfo(key);
+  return `<div class="cl-sp">${s.ok?`⭐ <b>${s.avg.toFixed(1)}</b> sportsmanship · ${s.n} ratings${s.tag?" · "+esc(s.tag):""}`:`⭐ Sportsmanship: ${s.n}/3 ratings so far`}</div>`;
+}
+// ---- announcements feed
+function feedAdd(it){
+  const f=S.feed||(S.feed=[]),i=it.ref?f.findIndex(x=>x.ref===it.ref):-1;
+  if(i>=0){f[i]=Object.assign(f[i],it,{id:f[i].id,t:f[i].t});return false}
+  f.unshift(Object.assign({id:gid(),t:Date.now()},it));if(f.length>40)f.length=40;return true;
+}
+function feedDel(ref){if(S.feed)S.feed=S.feed.filter(x=>x.ref!==ref)}
+function sting(){
+  const ctx=audioCtx();if(!ctx||muted)return;
+  try{const m=ctx.createGain();m.gain.value=.7;m.connect(ctx.destination);const t=ctx.currentTime+.03;
+    [[523.25,0,.12],[392,.14,.12],[659.25,.28,.3]].forEach(a=>brass(ctx,m,a[0],t+a[1],a[2],.18));cymbal(ctx,m,t+.28,.12,.5)}catch(e){}
+}
+function announce(f){if(f.type==="upset"){toast("🚨 UPSET ALERT: "+f.text);sting()}}
+// called whenever the host sets, changes or clears a court result
+function onDecide(c,i){
+  c.id=c.id||gid();
+  const w=winner(c);
+  if(!w||!c.A.length||!c.B.length){c.up=0;feedDel(c.id);return}
+  const sw=c.win,sa=c.sa,sb=c.sb;c.win=null;c.sa=c.sb=null;
+  const R=ratings(true);c.win=sw;c.sa=sa;c.sb=sb;
+  const avg=t=>t.reduce((a,id)=>a+(R[id]==null?3:R[id]),0)/t.length;
+  const wt=w==="a"?c.A:c.B,lt=w==="a"?c.B:c.A,wa=avg(wt),la=avg(lt),gap=la-wa;
+  c.up=gap>=0.5?Math.round(gap*100)/100:0;
+  if(!c.up){feedDel(c.id);return}
+  const ws=w==="a"?c.sa:c.sb,ls=w==="a"?c.sb:c.sa,sc=valid(c)?" "+ws+"–"+ls+" ":" over ";
+  const rank=tier(wa)!==tier(la)?"Rank "+tier(wa)+" just defeated Rank "+tier(la)+"!":"The underdogs just won!";
+  const fresh=feedAdd({type:"upset",ref:c.id,text:rank,sub:wt.map(plName).join(" & ")+sc+lt.map(plName).join(" & "),gap:c.up});
+  if(fresh){toast("🚨 UPSET ALERT: "+rank);sting()}
+}
+
+// ---- court extras: first time, rivalry, chemistry, pickle moments, rate button
+function meId(){const p=ME&&S.players.find(x=>x.mid===ME.uid);return p?p.id:null}
+function decorateCourts(){
+  if(!S.cur)return;
+  const led=CL().g,els=document.querySelectorAll("#courts .court"),host=!RM||RM.host,me=meId(),rv=rivalries(led,3);
+  S.cur.courts.forEach((c,i)=>{
+    const el=els[i];if(!el)return;let h="";
+    [c.A,c.B].forEach(t=>{
+      if(t.length!==2)return;
+      const x=keyId(t[0]),y=keyId(t[1]);if(!x||!y)return;
+      const q=chem(led,x,y);
+      if(!q.g)h+=`<div class="cl-note ft">👋 <b>FIRST TIME</b>: ${names(t)} have never played together. Good chance to build chemistry!</div>`;
+      else if(q.g>=3)h+=`<div class="cl-note">🤝 ${names(t)}: chemistry <b>${q.score}%</b> · ${q.g} games together</div>`;
+    });
+    if(c.A.length===1&&c.B.length===1){
+      const x=keyId(c.A[0]),y=keyId(c.B[0]);
+      if(x&&y&&!led.some(r=>(r.A.includes(x)&&r.B.includes(y))||(r.A.includes(y)&&r.B.includes(x))))h+=`<div class="cl-note ft">👋 <b>FIRST TIME</b>: ${names([c.A[0]])} and ${names([c.B[0]])} have never played each other.</div>`;
+    }
+    const ka=c.A.map(keyId),kb=c.B.map(keyId);
+    const hit=rv.find(r=>(ka.includes(r.a)&&kb.includes(r.b))||(ka.includes(r.b)&&kb.includes(r.a)));
+    if(hit)h+=rivalHTML(hit);
+    if(winner(c)){
+      if(host)h+=`<div class="cl-mood"><small>How did that game go?</small><div>${MOODS.map((m,k)=>`<button data-mo="${k}" data-c="${i}" class="${c.mo===k?"on":""}">${m[0]}<span>${m[1]}</span></button>`).join("")}</div></div>`;
+      if(me&&(c.A.includes(me)||c.B.includes(me)))h+=`<button class="keep cl-rate" data-rate="${i}">⭐ Rate your experience</button>`;
+    }
+    if(h){const d=document.createElement("div");d.className="cl-extra";d.innerHTML=h;el.appendChild(d)}
+  });
+}
+$("courts").addEventListener("click",e=>{
+  const m=e.target.closest("[data-mo]");
+  if(m&&S.cur&&(!RM||RM.host)){const c=S.cur.courts[+m.dataset.c],v=+m.dataset.mo;if(c){c.mo=c.mo===v?undefined:v;save();render()}return}
+  const r=e.target.closest("[data-rate]");if(r)openRate(+r.dataset.rate);
+});
+// ---- sportsmanship ratings (anonymous; players send them from their own phone, the host adds them up)
+let RATE=null,MYR=[];
+try{MYR=JSON.parse(localStorage.getItem("wp-myr")||"[]")}catch(e){}
+function ingest(rater,e){
+  if(!e||typeof e.t!=="string"||!(e.s>=1&&e.s<=5)||e.t==="u:"+rater)return false;
+  const c=CL(),id=rater+"|"+e.i+"|"+e.t;if(c.rs.includes(id))return false;
+  c.rs.push(id);if(c.rs.length>600)c.rs.shift();
+  const x=c.sp[e.t]||(c.sp[e.t]={n:0,sum:0,tg:[0,0,0,0,0]});x.n++;x.sum+=Math.round(e.s);
+  (e.g||[]).forEach(i=>{if(i>=0&&i<5)x.tg[i]++});return true;
+}
+function ingestAll(){
+  if(!(RM&&RM.host))return;let ch=false;
+  RM.members.forEach(m=>(m.rates||[]).forEach(e=>{if(ingest(m.uid,e))ch=true}));
+  if(ch){save();try{renderRank();if(PF)renderProfile()}catch(e){}}
+}
+function openRate(ci,pid){
+  let ids,g;
+  if(ci!=null&&S.cur&&S.cur.courts[ci]){const c=S.cur.courts[ci];g=c.id||("c"+S.round+"-"+ci);ids=[...c.A,...c.B]}
+  else{ids=[pid];g="p"+Date.now().toString(36)}
+  const me=meId(),t=ids.filter(id=>id!==me).map(id=>S.players.find(p=>p.id===id)).filter(p=>p&&pkey(p)&&!(ME&&pkey(p)==="u:"+ME.uid))
+    .map(p=>({key:pkey(p),name:p.name,s:0,tg:[]}));
+  if(!t.length){toast("Nobody to rate here.");return}
+  RATE={g,t};renderRate();$("ratemodal").hidden=false;
+}
+function renderRate(){
+  $("rtbody").innerHTML=`<h2 style="margin:0 0 4px">⭐ Rate your experience</h2><div class="empty" style="margin-bottom:10px">Anonymous. Only the average shows, once someone has 3 ratings.</div>`+
+  RATE.t.map((t,i)=>`<div class="cl-rt2"><b>${esc(t.name)}</b><div class="cl-stars">${[1,2,3,4,5].map(n=>`<button class="keep${t.s>=n?" on":""}" data-rs="${i}-${n}" aria-label="${n} stars">★</button>`).join("")}</div>
+<div class="cl-tags">${SPTAGS.map((g,k)=>`<button class="keep${t.tg.includes(k)?" on":""}" data-rt="${i}-${k}">${g}</button>`).join("")}</div></div>`).join("")+
+  `<div class="row" style="justify-content:flex-end;margin-top:10px"><button class="keep" id="rtcancel">Not now</button><button class="p keep" id="rtsend">Send</button></div>`;
+}
+function closeRate(){$("ratemodal").hidden=true;RATE=null}
+$("ratemodal").addEventListener("click",e=>{
+  if(!RATE)return;
+  if(e.target.id==="ratemodal"||e.target.id==="rtcancel"){closeRate();return}
+  const s=e.target.closest("[data-rs]");
+  if(s){const a=s.dataset.rs.split("-").map(Number);RATE.t[a[0]].s=a[1];renderRate();return}
+  const g=e.target.closest("[data-rt]");
+  if(g){const a=g.dataset.rt.split("-").map(Number),t=RATE.t[a[0]],j=t.tg.indexOf(a[1]);j>=0?t.tg.splice(j,1):t.tg.push(a[1]);renderRate();return}
+  if(e.target.id==="rtsend"){
+    const ev=RATE.t.filter(t=>t.s>0).map(t=>({i:RATE.g,t:t.key,s:t.s,g:t.tg.slice()}));
+    if(!ev.length){toast("Tap the stars to rate someone first.");return}
+    if(RM&&!RM.host&&FB&&ME){
+      MYR=MYR.concat(ev).slice(-80);try{localStorage.setItem("wp-myr",JSON.stringify(MYR))}catch(x){}
+      FB.fs.updateDoc(FB.fs.doc(FB.db,"rooms",RM.id,"members",ME.uid),{rates:MYR}).catch(()=>{});
+    }else{let ch=false;const r=ME?ME.uid:"dev";ev.forEach(x=>{if(ingest(r,x))ch=true});if(ch)save()}
+    closeRate();toast("Thanks! Your rating is anonymous.");render();
+  }
+});
+// ---- profile card: passport, sportsmanship, share
+function decorateProfile(){
+  const p=S.players.find(x=>x.id===PF);if(!p)return;
+  const body=$("pfbody"),row=[...body.children].filter(e=>e.classList.contains("row")).pop();if(!row)return;
+  const key=pkey(p);let h="";
+  if(!p.hr)h+=passHTML(passport(key,liveRows()));
+  h+=spHTML(key);
+  const self=ME&&key==="u:"+ME.uid;
+  h+=`<div class="row" style="margin:8px 0 12px">${self?"":`<button class="keep" id="pfrate">⭐ Rate sportsmanship</button>`}${p.hr?"":`<button class="keep" id="pfcard">📸 Passport card</button>`}</div>`;
+  const d=document.createElement("div");d.innerHTML=h;body.insertBefore(d,row);
+}
+$("pfmodal").addEventListener("click",e=>{
+  const p=S.players.find(x=>x.id===PF);if(!p)return;
+  if(e.target.id==="pfrate"){openRate(null,p.id);return}
+  if(e.target.id==="pfcard"){openCards([passCard(p)]);return}
+  const b=e.target.closest("[data-bcard]");if(b&&!b.disabled)openCards([badgeCard(p,+b.dataset.bcard)]);
+});
+// ---- feed, club view, pickle report
+function renderFeed(){
+  const c=$("feedcard"),f=(S.feed||[]).slice(0,6);
+  c.hidden=!f.length;if(!f.length)return;
+  c.innerHTML="<h2>📣 Room feed</h2>"+f.map(x=>`<div class="cl-feed"><div class="cl-rt">${x.type==="upset"?"🚨 UPSET ALERT":"📣"}</div><div>${esc(x.text)}</div><small>${esc(x.sub||"")} · ${new Date(x.t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}</small></div>`).join("");
+}
+function reportHTML(){
+  const rows=liveRows().filter(r=>r.s===S.sk&&r.k==="o");
+  if(!rows.length)return '<div class="empty">No games yet. The report fills up as you play.</div>';
+  const n=MOODS.map(()=>0);let up=0;
+  rows.forEach(r=>{if(r.mo!=null&&n[r.mo]!=null)n[r.mo]++;if(r.up>0)up++});
+  const L=MOODS.map((m,i)=>n[i]?`<div>${m[0]} <b>${n[i]}</b> ${n[i]===1?m[3]:m[2]}</div>`:"").join("")+(up?`<div>😈 <b>${up}</b> upset${up>1?"s":""}</div>`:"");
+  return `<div class="cl-rep"><div class="cl-rt">📊 PICKLE REPORT</div><div class="empty">${rows.length} game${rows.length===1?"":"s"} played</div>${L||'<div class="empty">Tap a feeling under finished games to fill this in.</div>'}</div>`;
+}
+let CM=0,CLUBMB=[],CLUBYM="";
+function renderClub(){
+  if(RV!=="club")return;
+  const rows=liveRows(),now=new Date(),y0=ymOf(now),y1=ymOf(new Date(now.getFullYear(),now.getMonth()-1,1)),ym=CM?y1:y0,mb=monthBoard(rows,ym);
+  CLUBMB=mb.out;CLUBYM=ym;
+  let h=`<div class="card"><h2>🏅 Club leaderboard</h2><div class="seg" id="cmseg"><button class="keep${CM?"":" on"}" data-cm="0">This month</button><button class="keep${CM?" on":""}" data-cm="1">Last month</button></div><div class="empty" style="margin:8px 0">${ymName(ym)} · starts fresh on the 1st</div>`;
+  h+=mb.out.length?mb.out.map((o,i)=>`<div class="cl-row"><span class="cl-ic">${o.ic}</span><span class="cl-tx"><b>${o.cat}</b><small>${kn(o.keys)} · ${esc(o.stat)}</small></span><button class="keep cl-cam" data-mcard="${i}" aria-label="Share card">📸</button></div>`).join(""):'<div class="empty">No games this month yet.</div>';
+  h+="</div>";
+  const rv=rivalries(rows,3).slice(0,3),ch=allChem(rows,3).slice(0,3);
+  h+=`<div class="card"><h2>⚔️ Rivalries</h2>${rv.length?rv.map(x=>rivalHTML(x)).join(""):'<div class="empty">A rivalry starts when two players have faced each other 3 times.</div>'}</div>`;
+  h+=`<div class="card"><h2>🤝 Best chemistry</h2>${ch.length?ch.map(chemHTML).join(""):'<div class="empty">Partners get a chemistry score after 3 games together.</div>'}</div>`;
+  h+=`<div class="card"><h2>📊 This session</h2>${reportHTML()}</div>`;
+  $("clubview").innerHTML=h;
+}
+$("clubview").addEventListener("click",e=>{
+  const c=e.target.closest("[data-cm]");if(c){CM=+c.dataset.cm;renderClub();return}
+  const m=e.target.closest("[data-mcard]");if(m){const o=CLUBMB[+m.dataset.mcard];if(o)openCards([monthCard(o,CLUBYM)])}
+});
+function renderClubAll(){renderFeed();renderClub();const r=$("endedrep");if(r)r.innerHTML=S.ended?reportHTML():""}
+// ---- share cards
+const avSpec=p=>p?(p.av&&p.av.t==="e"?{e:p.av.v}:p.av&&p.av.t==="p"?{img:p.av.v}:{ini:String(p.name||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase(),h:hue(p.name||"")}):null;
+const avKey=k=>{const p=S.players.find(x=>pkey(x)===k);if(p)return avSpec(p);const n=CL().n[k];return n&&n.a?{e:n.a}:{ini:kname(k).slice(0,2).toUpperCase(),h:hue(kname(k))}};
+const monthYear=()=>new Date().toLocaleDateString(undefined,{month:"long",year:"numeric"}).toUpperCase();
+function tRec(T,id){
+  if(!T)return "";
+  if(T.kind==="open"){const x=openStats(T).find(z=>z.q.id===id);return x?x.w+" Wins · "+x.l+" Losses":""}
+  let w=0,l=0;const e=T.ents.findIndex(z=>z.pl.some(q=>q.id===id));
+  T.rounds.forEach(rd=>rd.forEach(m=>{if(m.a==null||m.b==null||m.w==null)return;if(m.a===e||m.b===e)m.w===e?w++:l++}));
+  return w+" Wins · "+l+" Losses";
+}
+function podiumCards(){
+  const P=podData();if(!P.final)return [];
+  const isT=RV==="tour",ttl=isT?["TOURNAMENT CHAMPION","RUNNER-UP","THIRD PLACE"]:["OPEN PLAY CHAMPION","SECOND PLACE","THIRD PLACE"],med=["🥇","🥈","🥉"],out=[];
+  P.slots.forEach((s,i)=>{
+    if(!s)return;
+    const pls=s.pl.slice(0,2),one=s.pl.length===1,p=pls[0];
+    let rec="",rate="";
+    if(one&&p&&p.id!=null){
+      if(isT)rec=tRec(S.tour,p.id);
+      else{const x=stats().find(z=>z.p.id===p.id);if(x)rec=x.w+" Wins · "+x.l+" Losses"}
+      if(!isT&&!p.hr)rate="Rating: "+(p.rt==null?3:p.rt).toFixed(2)+" → "+(RT[p.id]==null?3:RT[p.id]).toFixed(2);
+    }
+    out.push({lbl:med[i]+" "+(one?p.name:"Team"),title:ttl[i],sub:(P.label||"WataPickle").toUpperCase()+" · "+monthYear(),avs:pls.map(avSpec),l1:med[i]+" "+String(s.label).toUpperCase(),l2:rec,l3:rate,
+      text:(i===0?"🏆 ":"")+ttl[i].toLowerCase()+" at "+(P.label||"WataPickle")+"! #WataPickle"});
+  });
+  return out;
+}
+function passCard(p){
+  const q=passport(pkey(p),liveRows());
+  return {lbl:"Passport",title:"WATAPICKLE PASSPORT",sub:"PLAYER CARD",avs:[avSpec(p)],l1:p.name.toUpperCase(),l2:q.g+(q.g===1?" GAME · ":" GAMES · ")+q.partners+(q.partners===1?" PARTNER · ":" PARTNERS · ")+q.opps+(q.opps===1?" OPPONENT":" OPPONENTS"),l3:q.titles+" TITLE"+(q.titles===1?"":"S")+" · "+BADGES.filter(b=>b[2](q)).length+" BADGES",text:"My WataPickle passport 🥒 #WataPickle"};
+}
+function badgeCard(p,i){
+  const q=passport(pkey(p),liveRows()),b=BADGES[i];
+  return {lbl:b[1],title:"BADGE UNLOCKED",sub:"WATAPICKLE PASSPORT",avs:[avSpec(p)],l1:b[0]+" "+b[1].toUpperCase(),l2:p.name.toUpperCase(),l3:q.g+" games played",text:"Badge unlocked: "+b[1]+" "+b[0]+" #WataPickle"};
+}
+function monthCard(o,ym){
+  return {lbl:o.cat,title:o.cat.toUpperCase(),sub:"CLUB LEADERBOARD · "+ymName(ym).toUpperCase(),avs:o.keys.slice(0,2).map(avKey),l1:o.ic+" "+o.keys.map(kname).join(" & ").toUpperCase(),l2:o.stat,l3:"",text:o.ic+" "+o.cat+" for "+ymName(ym)+"! #WataPickle"};
+}
+const rrect=(x,a,b,w,h,r)=>{x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath()};
+function fitText(x,t,maxW,px,weight){let s=px;do{x.font=weight+" "+s+"px system-ui,-apple-system,'Segoe UI',Roboto,'Apple Color Emoji','Segoe UI Emoji',sans-serif";s-=2}while(x.measureText(t).width>maxW&&s>20)}
+const loadImg=src=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src});
+async function drawCard(sp,cv){
+  const W=1080,x=cv.getContext("2d");cv.width=W;cv.height=W;
+  let g=x.createLinearGradient(0,0,W,W);g.addColorStop(0,"#0a1430");g.addColorStop(.55,"#122350");g.addColorStop(1,"#07102a");x.fillStyle=g;x.fillRect(0,0,W,W);
+  const rg=x.createRadialGradient(W/2,560,40,W/2,560,560);rg.addColorStop(0,"rgba(245,197,66,.30)");rg.addColorStop(1,"rgba(245,197,66,0)");x.fillStyle=rg;x.fillRect(0,0,W,W);
+  const fg=x.createLinearGradient(0,0,W,W);fg.addColorStop(0,"#fff0b0");fg.addColorStop(.5,"#f5c542");fg.addColorStop(1,"#b8821c");
+  x.strokeStyle=fg;x.lineWidth=12;rrect(x,30,30,W-60,W-60,36);x.stroke();x.lineWidth=3;rrect(x,54,54,W-108,W-108,26);x.stroke();
+  x.textAlign="center";x.textBaseline="middle";
+  const lg=document.querySelector(".logo");
+  if(lg&&lg.complete&&lg.naturalWidth){x.save();rrect(x,W/2-44,84,88,88,18);x.clip();x.drawImage(lg,W/2-44,84,88,88);x.restore()}
+  x.fillStyle="#f5c542";fitText(x,"WATAPICKLE MATCHER",700,34,"700");x.fillText("WATAPICKLE MATCHER",W/2,210);
+  x.fillStyle="#ffffff";fitText(x,sp.title,880,74,"800");x.fillText(sp.title,W/2,290);
+  x.fillStyle="#a9b8dc";fitText(x,sp.sub,880,34,"600");x.fillText(sp.sub,W/2,350);
+  const n=Math.max(1,sp.avs.length),r=n>1?118:150,cy=560,xs=n>1?[W/2-r-12,W/2+r+12]:[W/2];
+  for(let i=0;i<n;i++){
+    const a=sp.avs[i]||{ini:"?",h:200},cx=xs[i];
+    x.save();x.beginPath();x.arc(cx,cy,r,0,6.2832);x.closePath();
+    x.fillStyle=a.e?"#1a3f8f":"hsl("+(a.h||210)+" 55% 38%)";x.fill();x.clip();
+    if(a.img){const im=await loadImg(a.img);if(im){const s=Math.max(2*r/im.width,2*r/im.height);x.drawImage(im,cx-im.width*s/2,cy-im.height*s/2,im.width*s,im.height*s)}}
+    else if(a.e){x.font=Math.round(r*1.15)+"px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";x.fillStyle="#fff";x.fillText(a.e,cx,cy+6)}
+    else{x.fillStyle="#fff";x.font="800 "+Math.round(r*.8)+"px system-ui,sans-serif";x.fillText(a.ini||"?",cx,cy+4)}
+    x.restore();x.lineWidth=12;x.strokeStyle=fg;x.beginPath();x.arc(cx,cy,r+4,0,6.2832);x.stroke();
+  }
+  x.fillStyle="#f5c542";fitText(x,sp.l1,900,78,"800");x.fillText(sp.l1,W/2,792);
+  x.fillStyle="#ffffff";if(sp.l2){fitText(x,sp.l2,900,46,"600");x.fillText(sp.l2,W/2,872)}
+  x.fillStyle="#a9b8dc";if(sp.l3){fitText(x,sp.l3,900,42,"600");x.fillText(sp.l3,W/2,934)}
+  x.fillStyle="rgba(245,197,66,.85)";x.font="700 30px system-ui,sans-serif";x.fillText("#WataPickle  ·  Matched with WataPickle Matcher",W/2,1000);
+}
+let CARDS=null;
+async function openCards(list){
+  list=list.filter(Boolean);if(!list.length){toast("No cards yet. Finish the games first.");return}
+  CARDS={list,i:0};$("cardmodal").hidden=false;await showCard();
+}
+async function showCard(){
+  const L=CARDS.list;
+  $("cdbody").innerHTML=`<h2 style="margin:0 0 8px">📸 Share card</h2>${L.length>1?`<div class="cl-tags" style="margin-bottom:8px">${L.map((c,i)=>`<button class="keep${i===CARDS.i?" on":""}" data-ci="${i}">${esc(c.lbl)}</button>`).join("")}</div>`:""}
+<canvas id="cardcv" width="1080" height="1080" style="width:100%;border-radius:12px;display:block"></canvas>
+<div class="empty" style="margin:8px 0">You choose whether to share it.</div>
+<div class="row" style="justify-content:flex-end"><button class="keep" id="cdclose">Close</button><button class="keep" id="cdsave">Save image</button><button class="p keep" id="cdshare">Share</button></div>`;
+  await drawCard(L[CARDS.i],$("cardcv"));
+}
+function saveCardFile(blob){
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="WataPickle-card.png";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+async function shareCard(save){
+  const cv=$("cardcv"),sp=CARDS&&CARDS.list[CARDS.i];if(!cv||!sp)return;
+  const blob=await new Promise(r=>cv.toBlob(r,"image/png"));if(!blob)return;
+  if(save){saveCardFile(blob);return}
+  const P=window.Capacitor&&window.Capacitor.Plugins;
+  try{
+    if(P&&P.Filesystem&&P.Share){
+      const b64=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(String(f.result).split(",")[1]);f.readAsDataURL(blob)});
+      const w=await P.Filesystem.writeFile({path:"WataPickle-card.png",data:b64,directory:"CACHE"});
+      await P.Share.share({title:"WataPickle",text:sp.text,url:w.uri,dialogTitle:"Share your card"});return;
+    }
+    const file=new File([blob],"WataPickle-card.png",{type:"image/png"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:sp.text});return}
+  }catch(e){if(e&&e.name==="AbortError")return}
+  saveCardFile(blob);toast("Sharing isn't available here, so the image was saved instead.");
+}
+$("cardmodal").addEventListener("click",e=>{
+  if(!CARDS)return;
+  if(e.target.id==="cardmodal"||e.target.id==="cdclose"){$("cardmodal").hidden=true;CARDS=null;return}
+  const c=e.target.closest("[data-ci]");if(c){CARDS.i=+c.dataset.ci;showCard();return}
+  if(e.target.id==="cdshare")shareCard(false);else if(e.target.id==="cdsave")shareCard(true);
+});
+$("sharecards").onclick=()=>openCards(podiumCards());
+// ---- hooks
+const _apply=applyState;applyState=function(d){const had=new Set((S.feed||[]).map(f=>f.id));_apply(d);(S.feed||[]).forEach(f=>{if(!had.has(f.id)&&Date.now()-f.t<90000)announce(f)})};
+const _cel=celebrate;celebrate=function(l,f){_cel(l,f);if(l==="full")setTimeout(()=>{try{toast("📸 Winner cards are ready. Tap Share cards on the podium.")}catch(e){}},2600)};
+const _rp=renderProfile;renderProfile=function(){_rp();decorateProfile()};
+
 const acctClick=async e=>{
   const bt=e.target.closest("button"),id=bt?bt.id:"";
   const fc=e.target.closest("[data-f]");
