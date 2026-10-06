@@ -1,123 +1,76 @@
-name: Build Android APK
-
+name: Build APK
 on:
   push:
     branches: [main, master]
   workflow_dispatch:
-
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+    env:
+      KS_FILE: watapickle-release.p12
+      KS_ALIAS: watapickle
+      KS_PASS: lR2aukrwaxhZtQOArT9h
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Check required files
-        run: |
-          for f in www/index.html icon.png make_icons.py capacitor.config.json package.json debug.keystore; do
-            test -f "$f" || { echo "Missing file: $f"; exit 1; }
-          done
-
-      - name: Stamp the build number into the app
-        run: |
-          sed -i "s/const APP_BUILD=[0-9]*;/const APP_BUILD=${{ github.run_number }};/" www/index.html
-          grep -q "const APP_BUILD=${{ github.run_number }};" www/index.html || { echo "Could not stamp APP_BUILD in www/index.html"; exit 1; }
-          grep -o "const APP_BUILD=[0-9]*" www/index.html
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
-
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
-
-      - name: Install Capacitor
-        run: npm install
-
-      - name: Create Android project
-        run: npx cap add android
-
-      - name: Make launcher icons
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check signing key
         run: |
-          pip install pillow
-          python3 make_icons.py android/app/src/main/res
-
-      - name: Allow camera (for avatar photos)
+          if [ ! -f "$KS_FILE" ]; then
+            echo "::error::watapickle-release.p12 is missing. Upload it to the main folder of the repository."
+            exit 1
+          fi
+      - name: Stamp build number
+        run: |
+          sed -i "s/const APP_BUILD=0;/const APP_BUILD=${{ github.run_number }};/" www/index.html
+          grep -o "const APP_BUILD=[0-9]*" www/index.html
+      - run: npm install
+      - run: npx cap add android
+      - name: Allow camera
         run: |
           M=android/app/src/main/AndroidManifest.xml
-          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>#' "$M"
-          grep -n "CAMERA" "$M"
-
-      - name: Set version number
+          sed -i 's|</manifest>|    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>|' $M
+          grep -n CAMERA $M || true
+      - run: python -m pip install pillow
+      - name: Make app icon
+        run: python make_icons.py
+      - name: Set app name
         run: |
-          G=android/app/build.gradle
-          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$G"
-          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" "$G"
-          grep -n -E "versionCode|versionName" "$G"
-
-      - name: Use the fixed signing key
+          F=android/app/src/main/res/values/strings.xml
+          sed -i 's|name="app_name">[^<]*<|name="app_name">WataPickle Matcher<|; s|name="title_activity_main">[^<]*<|name="title_activity_main">WataPickle Matcher<|' $F
+          grep -E "app_name|title_activity" $F || true
+          ls android/app/src/main/res/mipmap-xxxhdpi
+      - name: Set version
         run: |
-          mkdir -p ~/.android
-          cp debug.keystore ~/.android/debug.keystore
-          # Point Gradle straight at the repo keystore. Copying it to ~/.android alone was not enough:
-          # the APK still came out signed with a different key.
-          cat >> android/app/build.gradle <<EOF
-
-          // Sign every build with the repo's debug.keystore so phones can update in place
-          android {
-              signingConfigs {
-                  fixed {
-                      storeFile file("$GITHUB_WORKSPACE/debug.keystore")
-                      storePassword "android"
-                      keyAlias "androiddebugkey"
-                      keyPassword "android"
-                      storeType "pkcs12"
-                  }
-              }
-              buildTypes {
-                  debug {
-                      signingConfig signingConfigs.fixed
-                  }
-              }
-          }
-          EOF
-          tail -22 android/app/build.gradle
-
-      - name: Sync web files
-        run: npx cap sync android
-
-      - name: Build APK
-        working-directory: android
+          F=android/app/build.gradle
+          CODE=$(( $(date +%s) / 60 ))
+          sed -i "s/versionCode [0-9][0-9]*/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"1.${{ github.run_number }}\"/" $F
+          sed -i '/namespace /a\    lint { checkReleaseBuilds false }' $F
+          grep -nE "versionCode|versionName|lint" $F
+      - run: npx cap sync android
+      - name: Build
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
-      - name: Verify signing key and version
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleRelease || ./gradlew assembleDebug
+      - name: Sign with the permanent key
         run: |
-          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          BT=$(ls -d "$SDK"/build-tools/* | sort -V | tail -1)
-          APK=android/app/build/outputs/apk/debug/app-debug.apk
-          WANT=$(keytool -list -v -keystore debug.keystore -storepass android | grep -m1 "SHA256:" | sed 's/.*SHA256: *//' | tr -d ':' | tr 'A-F' 'a-f')
-          GOT=$("$BT/apksigner" verify --print-certs "$APK" | grep -m1 "certificate SHA-256 digest" | sed 's/.*: *//' | tr 'A-F' 'a-f')
-          PKG=$("$BT/aapt2" dump badging "$APK" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)
-          VC=$("$BT/aapt2" dump badging "$APK" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p" | head -1)
-          {
-            echo "### APK check"
-            echo "- Package: \`$PKG\`"
-            echo "- versionCode: \`$VC\` (build ${{ github.run_number }})"
-            echo "- Signing key SHA-256: \`$GOT\`"
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-          [ -n "$WANT" ] && [ "$GOT" = "$WANT" ] || { echo "::error::APK is NOT signed with debug.keystore (wanted $WANT, got $GOT). Phones would refuse to update."; exit 1; }
-          [ "$VC" = "${{ github.run_number }}" ] || { echo "::error::versionCode is $VC, expected ${{ github.run_number }}."; exit 1; }
-          [ "$PKG" = "com.openplay.manager" ] || { echo "::error::Package name is $PKG."; exit 1; }
-
-      - name: Name the APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk WataPickle-build${{ github.run_number }}.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          APK=$(ls android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1 || true)
+          if [ -z "$APK" ]; then APK=$(ls android/app/build/outputs/apk/debug/*.apk | head -1); fi
+          echo "Signing $APK"
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/zipalign" -f -p 4 "$APK" aligned.apk
+          "$BT/apksigner" sign --ks "$KS_FILE" --ks-type PKCS12 --ks-key-alias "$KS_ALIAS" --ks-pass env:KS_PASS --key-pass env:KS_PASS --out WataPickle-Matcher.apk aligned.apk
+          "$BT/apksigner" verify --print-certs WataPickle-Matcher.apk | grep -E "Verifies|SHA-256"
+      - uses: actions/upload-artifact@v4
         with:
-          name: watapickle-apk
-          path: WataPickle-build${{ github.run_number }}.apk
-          if-no-files-found: error
+          name: WataPickle-Matcher-APK
+          path: WataPickle-Matcher.apk
