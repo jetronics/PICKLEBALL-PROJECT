@@ -316,6 +316,12 @@ button.pnm{cursor:pointer}
 .cl-tags{display:flex;flex-wrap:wrap;gap:6px}.cl-tags button{padding:6px 10px;font-size:.8rem}.cl-tags button.on{background:var(--acc);color:var(--accink)}
 #pfmodal .avbox{max-height:92vh;overflow:auto}
 .cl-pass .pfgrid{grid-template-columns:repeat(4,1fr);gap:6px}.cl-pass .pft{padding:6px 4px;text-align:center}.cl-pass .pft small{font-size:.62rem}.cl-pass .pft b{font-size:1rem}
+.cl-march.on{border-color:var(--acc)}
+.eq{display:inline-flex;gap:2px;align-items:flex-end;height:12px;margin-left:8px;vertical-align:middle}
+.eq i{width:3px;background:var(--acc);border-radius:1px;animation:eq .9s ease-in-out infinite}
+.eq i:nth-child(1){height:6px}.eq i:nth-child(2){height:12px;animation-delay:.25s}.eq i:nth-child(3){height:8px;animation-delay:.5s}
+@keyframes eq{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+@media (prefers-reduced-motion:reduce){.eq i{animation:none}}
 </style>
 </head>
 <body>
@@ -2588,7 +2594,7 @@ function renderClub(){
   if(RV!=="club")return;
   const rows=liveRows(),now=new Date(),y0=ymOf(now),y1=ymOf(new Date(now.getFullYear(),now.getMonth()-1,1)),ym=CM?y1:y0,mb=monthBoard(rows,ym);
   CLUBMB=mb.out;CLUBYM=ym;
-  let h=`<div class="card"><h2>🏅 Club leaderboard</h2><div class="seg" id="cmseg"><button class="keep${CM?"":" on"}" data-cm="0">This month</button><button class="keep${CM?" on":""}" data-cm="1">Last month</button></div><div class="empty" style="margin:8px 0">${ymName(ym)} · starts fresh on the 1st</div>`;
+  let h=`<div class="card"><h2>🏅 Club leaderboard</h2>${marchBtn()}<div class="seg" id="cmseg"><button class="keep${CM?"":" on"}" data-cm="0">This month</button><button class="keep${CM?" on":""}" data-cm="1">Last month</button></div><div class="empty" style="margin:8px 0">${ymName(ym)} · starts fresh on the 1st</div>`;
   h+=mb.out.length?mb.out.map((o,i)=>`<div class="cl-row"><span class="cl-ic">${o.ic}</span><span class="cl-tx"><b>${o.cat}</b><small>${kn(o.keys)} · ${esc(o.stat)}</small></span><button class="keep cl-cam" data-mcard="${i}" aria-label="Share card">📸</button></div>`).join(""):'<div class="empty">No games this month yet.</div>';
   h+="</div>";
   const rv=rivalries(rows,3).slice(0,3),ch=allChem(rows,3).slice(0,3);
@@ -2714,6 +2720,98 @@ $("sharecards").onclick=()=>openCards(podiumCards());
 const _apply=applyState;applyState=function(d){const had=new Set((S.feed||[]).map(f=>f.id));_apply(d);(S.feed||[]).forEach(f=>{if(!had.has(f.id)&&Date.now()-f.t<90000)announce(f)})};
 const _cel=celebrate;celebrate=function(l,f,k){_cel(l,f,k);if(l==="full")setTimeout(()=>{try{toast("📸 Winner cards are ready. Tap Share cards on the podium.")}catch(e){}},2600)};
 const _rp=renderProfile;renderProfile=function(){_rp();decorateProfile()};
+
+// ===================== Club "Hall of Fame" march =====================
+// A procedural brass march (C major, 96 BPM, 16 bars, ~40 s) that loops without a gap while the Club view is on screen.
+// Brass melody, tuba oom-pah, off-beat horn stabs, strings, tuned timpani, marching snare, cymbals and a few hall bells.
+const MH={on:false,starting:false,g:null,perc:null,bar:0,t0:0,timer:0};
+const MH_VOL=.5,MH_BAR=2.5; // 96 BPM, 4/4: one bar = 2.5 s
+let marchPref=true;try{marchPref=localStorage.getItem("wp-march")!=="0"}catch(e){}
+const mhf=m=>440*Math.pow(2,(m-69)/12);
+// chords: stab voicing, bass root
+const MH_C={C:{st:[55,60,64],r:36},Em:{st:[55,59,64],r:40},F:{st:[57,60,65],r:41},G:{st:[55,59,62],r:43},Am:{st:[57,60,64],r:45}};
+// loudness per bar: a soft, stately entrance that builds to a full, triumphant second half
+const MH_DYN=[.85,.85,.9,.9,.95,.95,1,1.05,1.2,1.2,1.25,1.25,1.3,1.3,1.35,1.2];
+const MH_PROG=["C","C","F","G","C","Am","F","G","C","Em","F","C","F","G","C","C"];
+// melody per bar: [eighth-note step, midi note, length in steps]
+const MH_MEL=[
+  [[0,72,3],[3,76,1],[4,79,4]],[[0,84,3],[3,83,1],[4,79,2],[6,76,2]],[[0,81,3],[3,79,1],[4,77,2],[6,81,2]],[[0,79,3],[3,77,1],[4,74,2],[6,79,2]],
+  [[0,76,3],[3,79,1],[4,84,4]],[[0,81,3],[3,84,1],[4,81,2],[6,79,2]],[[0,77,3],[3,81,1],[4,84,2],[6,81,2]],[[0,74,3],[3,79,1],[4,83,4]],
+  [[0,84,3],[3,79,1],[4,88,4]],[[0,88,3],[3,86,1],[4,83,2],[6,79,2]],[[0,89,3],[3,88,1],[4,84,2],[6,81,2]],[[0,84,3],[3,79,1],[4,76,2],[6,79,2]],
+  [[0,81,3],[3,84,1],[4,89,4]],[[0,86,3],[3,79,1],[4,83,2],[6,86,2]],[[0,88,3],[3,86,1],[4,84,2],[6,79,2]],[[0,84,6]]];
+function mhPad(ctx,dest,f,t,dur,v){
+  const lp=ctx.createBiquadFilter(),g=ctx.createGain();
+  lp.type="lowpass";lp.frequency.value=1500;
+  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+.5);g.gain.setValueAtTime(v,t+dur-.6);g.gain.linearRampToValueAtTime(.0001,t+dur);
+  lp.connect(g);g.connect(dest);
+  [-6,6].forEach(d=>{const o=ctx.createOscillator();o.type="sawtooth";o.frequency.value=f;o.detune.value=d;o.connect(lp);o.start(t);o.stop(t+dur+.05)});
+}
+function mhBar(ctx,dest,bar,t){
+  const E=MH_BAR/8,ch=MH_C[MH_PROG[bar]],P=MH.perc||dest,B=bar>=8,vm=MH_DYN[bar];
+  MH_MEL[bar].forEach(a=>{
+    const d=Math.max(.14,a[2]*E*.92);
+    brass(ctx,dest,mhf(a[1]),t+a[0]*E,d,.13*vm);
+    if(B)brass(ctx,dest,mhf(a[1]-12),t+a[0]*E,d,.09*vm);
+  });
+  brass(ctx,dest,mhf(ch.r),t,E*1.7,.2*vm);brass(ctx,dest,mhf(ch.r+7),t+4*E,E*1.7,.17*vm);
+  [2,6].forEach(s=>ch.st.forEach(n=>brass(ctx,dest,mhf(n),t+s*E,E*.8,.055*vm)));
+  ch.st.forEach(n=>mhPad(ctx,dest,mhf(n+12),t,MH_BAR+.4,.03*vm));
+  timp(ctx,P,t,mhf(ch.r+12),.55*vm);timp(ctx,P,t+4*E,mhf(ch.r+19),.4*vm);
+  snare(ctx,P,t+2*E,.14);snare(ctx,P,t+6*E,.14);
+  if(bar%8===7){[6,6.5,7,7.5].forEach((s,i)=>snare(ctx,P,t+s*E,.1+i*.05))}
+  if(bar===0||bar===8)cymbal(ctx,P,t,bar===8?.4:.25,2);
+  if(bar%4===0)bell(ctx,dest,t,mhf(96),.035);
+}
+function marchStart(ctx){
+  if(MH.on)return;
+  const mg=ctx.createGain(),perc=ctx.createGain(),n=ctx.currentTime;
+  mg.gain.setValueAtTime(.0001,n);mg.gain.linearRampToValueAtTime(MH_VOL,n+2.4);
+  perc.gain.value=.3;perc.connect(mg);mg.connect(bus(ctx).in);
+  Object.assign(MH,{on:true,g:mg,perc,bar:0,t0:n+.2});
+  const tick=()=>{
+    if(!MH.on||MH.g!==mg)return;
+    const ahead=ctx.currentTime+MH_BAR*2.3;
+    while(MH.t0+MH.bar*MH_BAR<ahead){mhBar(ctx,mg,MH.bar%16,MH.t0+MH.bar*MH_BAR);MH.bar++}
+    MH.timer=setTimeout(tick,500);
+  };
+  tick();
+  if(RV==="club")renderClub();
+}
+function marchStop(){
+  if(!MH.on)return;
+  const mg=MH.g;MH.on=false;MH.g=null;clearTimeout(MH.timer);
+  try{const c=audioCtx(),n=c.currentTime;mg.gain.cancelScheduledValues(n);mg.gain.setValueAtTime(Math.max(.0001,mg.gain.value),n);mg.gain.linearRampToValueAtTime(.0001,n+.8);setTimeout(()=>{try{mg.disconnect()}catch(e){}},1200)}catch(e){try{mg.disconnect()}catch(x){}}
+  if(RV==="club")renderClub();
+}
+const marchWanted=()=>marchPref&&!muted&&S.tab==="rank"&&RV==="club"&&!document.hidden;
+function marchSync(){
+  if(marchWanted()){
+    if(MH.on||MH.starting)return;
+    MH.starting=true;
+    const ok=whenAudio(ctx=>{MH.starting=false;if(marchWanted())marchStart(ctx)});
+    if(!ok)MH.starting=false;
+  }else if(MH.on)marchStop();
+}
+// lower the march while a celebration plays, then bring it back
+function marchDuck(sec){
+  if(!MH.on||!MH.g)return;
+  try{const c=audioCtx(),n=c.currentTime,g=MH.g.gain;g.cancelScheduledValues(n);g.setValueAtTime(Math.max(.0001,g.value),n);g.linearRampToValueAtTime(.05,n+.4);g.setValueAtTime(.05,n+sec);g.linearRampToValueAtTime(MH_VOL,n+sec+2)}catch(e){}
+}
+function marchBtn(){
+  const lab=!marchPref?"🎺 Hall of Fame march: off":muted?"🎺 March on · sound is muted":MH.on?"🎺 Hall of Fame march: playing":"🎺 Hall of Fame march: on";
+  return `<button class="keep cl-march${marchPref&&!muted?" on":""}" data-march="1" style="width:100%;margin:0 0 8px">${lab}${MH.on?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':""}</button>`;
+}
+$("clubview").addEventListener("click",e=>{
+  if(!e.target.closest("[data-march]"))return;
+  marchPref=!marchPref;try{localStorage.setItem("wp-march",marchPref?"1":"0")}catch(x){}
+  marchSync();renderClub();
+});
+$("mutebtn").addEventListener("click",()=>{marchSync();if(RV==="club")renderClub()});
+document.addEventListener("visibilitychange",marchSync);
+const _stM=showTab;showTab=function(t){_stM(t);marchSync()};
+const _rvM=setRV;setRV=function(v){_rvM(v);marchSync()};
+const _celM=celebrate;celebrate=function(l,f,k){if(f||l==="full")marchDuck(l==="full"?9:5);return _celM(l,f,k)};
+marchSync();
 
 const acctClick=async e=>{
   const bt=e.target.closest("button"),id=bt?bt.id:"";
