@@ -1062,8 +1062,27 @@ let actx=null,noiseB=null,celT=0,confRaf=0;
 const reduceMotion=()=>{try{return window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches}catch(e){return false}};
 function audioCtx(){
   if(!actx){try{const C=window.AudioContext||window.webkitAudioContext;if(C)actx=new C()}catch(e){}}
-  if(actx&&actx.state==="suspended"){try{actx.resume()}catch(e){}}
+  if(actx&&actx.state!=="running"){try{const p=actx.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
   return actx;
+}
+// A suspended audio context never advances its clock, so sounds scheduled on it can be lost. Run fn only once it is really running.
+function whenAudio(fn){
+  const ctx=audioCtx();if(!ctx)return false;
+  if(ctx.state==="running"){fn(ctx);return true}
+  let done=false;const go=()=>{if(done)return;done=true;fn(ctx)};
+  try{ctx.resume().then(go,go)}catch(e){go()}
+  setTimeout(go,700);
+  return true;
+}
+// Phones only allow sound after a real tap. Keep trying on every tap until the audio is running, with a silent blip as the "unlock".
+function unlockAudio(){
+  const ctx=audioCtx();if(!ctx)return;
+  try{const s=ctx.createBufferSource();s.buffer=ctx.createBuffer(1,1,22050);s.connect(ctx.destination);s.start(0)}catch(e){}
+  if(ctx.state==="running")["touchend","pointerup","click","keydown"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));
+}
+["touchend","pointerup","click","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
+function audioHint(){
+  setTimeout(()=>{if(actx&&actx.state!=="running")toast("🔇 Your phone is blocking sound. Turn up the media volume, then tap again.")},900);
 }
 function noiseBuf(ctx){
   if(noiseB&&noiseB.sampleRate===ctx.sampleRate)return noiseB;
@@ -1109,18 +1128,36 @@ function clapTimes(dur,peak){
   while(t<dur){t+=-Math.log(1-Math.random())/rate(t);if(t<dur)out.push(t)}
   return out;
 }
-function applauseAt(ctx,out,at,dur,vol,peak){
-  const list=clapBufs(ctx),g=ctx.createGain(),pan=!!ctx.createStereoPanner;
-  g.gain.value=vol;g.connect(out);
-  clapTimes(dur,peak).forEach(t=>{
-    const s=ctx.createBufferSource(),v=ctx.createGain();
-    s.buffer=list[Math.floor(Math.random()*list.length)];s.playbackRate.value=rnd(.82,1.3);
-    v.gain.value=rnd(.25,1)*(.55+.45*Math.min(1,t/(dur*.3)));
-    s.connect(v);
-    if(pan){const p=ctx.createStereoPanner();p.pan.value=rnd(-.85,.85);v.connect(p);p.connect(g)}else v.connect(g);
-    s.start(at+t);
-  });
+let clapB24=null;
+function clapBank24(sr){
+  if(clapB24&&clapB24.sr===sr)return clapB24.list;
+  const len=Math.floor(sr*.085),list=[];
+  for(let k=0;k<24;k++){
+    const d=new Float32Array(len),hits=1+Math.floor(Math.random()*3);
+    for(let h=0;h<hits;h++){
+      const off=Math.floor(sr*h*rnd(.003,.011)),tau=sr*rnd(.0035,.0085),amp=h?rnd(.5,.9):1;
+      for(let i=0;i+off<len;i++)d[i+off]+=(Math.random()*2-1)*Math.exp(-i/tau)*amp;
+    }
+    const w0=2*Math.PI*rnd(900,2700)/sr,al=Math.sin(w0)/(2*rnd(1.2,3.4)),a0=1+al,c0=al/a0,c2=-al/a0,a1=-2*Math.cos(w0)/a0,a2=(1-al)/a0;
+    let x1=0,x2=0,y1=0,y2=0,pk=1e-6;
+    for(let i=0;i<len;i++){const x=d[i],y=c0*x+c2*x2-a1*y1-a2*y2;x2=x1;x1=x;y2=y1;y1=y;d[i]=y;pk=Math.max(pk,Math.abs(y))}
+    for(let i=0;i<len;i++)d[i]/=pk;
+    list.push(d);
+  }
+  clapB24={sr,list};return list;
 }
+// every clap is placed at a random time into one stereo buffer (random timing, random pitch, random left/right), then played as a single sound
+function applauseAt(ctx,out,at,dur,vol,peak){
+  const sr=24000,len=Math.floor((dur+.3)*sr),buf=ctx.createBuffer(2,len,sr),L=buf.getChannelData(0),R=buf.getChannelData(1),bank=clapBank24(sr);
+  clapTimes(dur,peak).forEach(t=>{
+    const tpl=bank[Math.floor(Math.random()*bank.length)],pr=rnd(.82,1.3),g=rnd(.25,1)*(.55+.45*Math.min(1,t/(dur*.3))),pn=Math.random()*1.5708,gl=Math.cos(pn)*g,gr=Math.sin(pn)*g;
+    const i0=Math.floor(t*sr),n=Math.floor(tpl.length/pr);
+    for(let j=0;j<n&&i0+j<len;j++){const p=j*pr,pi=Math.floor(p),fr=p-pi,v=tpl[pi]*(1-fr)+(tpl[pi+1]||0)*fr;L[i0+j]+=v*gl;R[i0+j]+=v*gr}
+  });
+  const s=ctx.createBufferSource(),g=ctx.createGain();
+  s.buffer=buf;g.gain.value=vol*APPL_K;s.connect(g);g.connect(out);s.start(at);
+}
+const APPL_K=2.5;
 function applause(dur,vol){ // kept for older callers
   const ctx=audioCtx();if(!ctx||muted)return;
   try{applauseAt(ctx,bus(ctx).in,ctx.currentTime+.03,dur,(vol||.5)*.3,50)}catch(e){}
@@ -1383,13 +1420,18 @@ function celebrate(level,force,kind){
   kind=kind||(RV==="tour"?"tour":"open");
   const full=level==="full",tour=kind==="tour";
   celTimers.forEach(clearTimeout);celTimers=[];
-  const ctx=muted?null:audioCtx();let playing=false;
-  if(curRun&&ctx){try{curRun.gain.cancelScheduledValues(ctx.currentTime);curRun.gain.setTargetAtTime(0,ctx.currentTime,.05)}catch(e){}}
-  if(ctx){
-    try{
-      const run=ctx.createGain();run.gain.value=1;run.connect(bus(ctx).in);curRun=run;
-      (tour?scoreTour:scoreOpen)(ctx,run,ctx.currentTime+.05,full);playing=true;
-    }catch(e){playing=false}
+  let playing=false;
+  if(muted){if(force)toast("🔇 Sound is off. Tap the 🔊 button to turn it on.")}
+  else{
+    playing=whenAudio(ctx=>{
+      if(curRun){try{curRun.gain.cancelScheduledValues(ctx.currentTime);curRun.gain.setTargetAtTime(0,ctx.currentTime,.05)}catch(e){}}
+      try{
+        const run=ctx.createGain();run.gain.value=1;run.connect(bus(ctx).in);curRun=run;
+        (tour?scoreTour:scoreOpen)(ctx,run,ctx.currentTime+.05,full);
+      }catch(e){}
+    });
+    if(!playing){if(force)toast("🔇 This phone could not start the sound.")}
+    else if(force)audioHint();
   }
   const lead=tour?(full?2.6:0):(full?.9:0);
   const V=(sec,fn)=>{const ms=Math.max(0,sec-(playing?0:lead))*1000;if(ms<=0)fn();else celTimers.push(setTimeout(fn,ms))};
@@ -1421,7 +1463,11 @@ function showTab(t){
 }
 $("tabs").onclick=e=>{const b=e.target.closest("[data-t]");if(b){showTab(b.dataset.t);if(b.dataset.t==="rank")celebrate("small")}};
 $("celebtn").onclick=()=>celebrate("full",true);
-$("mutebtn").onclick=()=>{muted=!muted;try{localStorage.setItem("wp-mute",muted?"1":"0")}catch(e){}setMuteIcon()};
+function soundCheck(){
+  whenAudio(ctx=>{try{const run=ctx.createGain();run.gain.value=.9;run.connect(bus(ctx).in);const t=ctx.currentTime+.03;bell(ctx,run,t,784,.3);bell(ctx,run,t+.13,1046.5,.3);bell(ctx,run,t+.26,1318.5,.3)}catch(e){}});
+  audioHint();
+}
+$("mutebtn").onclick=()=>{muted=!muted;try{localStorage.setItem("wp-mute",muted?"1":"0")}catch(e){}setMuteIcon();if(!muted)soundCheck()};
 setMuteIcon();
 function arm(id,label,fn){
   const b=$(id),orig=b.textContent;let t;
@@ -2069,7 +2115,7 @@ $("courts").addEventListener("click",e=>{const b=e.target.closest("[data-callc]"
 let ringI=null,ringT=null;
 function ringOnce(){
   const a=audioCtx();
-  if(a){
+  if(a&&a.state==="running"){
     const t0=a.currentTime+.02;
     [[880,0],[660,.22],[880,.5],[660,.72],[880,1],[660,1.22]].forEach(([fr,dt])=>{
       try{const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=fr;
@@ -2091,7 +2137,7 @@ $("callack").onclick=async()=>{
   try{if(RM&&FB)await FB.fs.updateDoc(FB.fs.doc(FB.db,"rooms",RM.id,"calls",ME.uid),{ackAt:FB.fs.serverTimestamp()})}catch(e){}
 };
 $("calldismiss").onclick=()=>{stopRing();$("callbox").hidden=true};
-["touchstart","click","keydown"].forEach(ev=>document.addEventListener(ev,()=>{try{audioCtx()}catch(e){}},{once:true,passive:true}));
+
 // chat
 function updChatFab(){
   const f=$("chatfab"),b=$("chatbadge");
