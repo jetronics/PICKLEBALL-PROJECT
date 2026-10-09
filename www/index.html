@@ -260,6 +260,10 @@ button.pnm{cursor:pointer}
 .pwrap.ch .psub{top:97.4%;width:62%}
 .pwrap.ch .psub span{max-width:44cqw}
 .hb{display:flex;gap:6px;align-items:center}
+.timer{font-size:.72rem;font-weight:700;color:var(--warn);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.timer.stopped{color:var(--mute);font-weight:600}
+.undo{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin:0 0 10px;padding:10px 14px;border:1px solid var(--acc);color:var(--acc);background:rgba(245,197,66,.08);border-radius:10px;font-weight:700}
+.undo:active{background:rgba(245,197,66,.18)}
 .sk.call{background:var(--acc);color:var(--accink);border-color:var(--acc)}
 #chatfab{position:fixed;right:14px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:40;width:54px;height:54px;border-radius:50%;background:var(--acc);color:var(--accink);border:0;font-size:1.5rem;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.5)}
 #chatfab[hidden]{display:none}
@@ -366,7 +370,7 @@ button.pnm{cursor:pointer}
 <section id="t-players" class="tab">
 <div class="card">
 <h2>Players (<span id="cnt">0</span>)</h2>
-<div class="row"><input id="name" placeholder="Add player name" maxlength="30"><input id="rate" type="number" inputmode="decimal" step="0.1" min="2" max="6" value="3.0" style="flex:0 0 72px" aria-label="Rating"><button class="p" id="add">Add</button></div>
+<div class="row"><input id="name" placeholder="Add player name" maxlength="30"><input id="rate" type="number" inputmode="decimal" step="0.1" min="2" max="8" value="3.0" style="flex:0 0 72px" aria-label="Rating"><button class="p" id="add">Add</button></div>
 <div class="lbl" style="margin:10px 0 0"><span>Gender</span><div class="seg" id="ngender" style="min-width:230px"><button data-g="m">♂ Male</button><button data-g="f">♀ Female</button><button data-g="h" class="on">Hidden</button></div></div>
 <div class="empty" style="margin-top:8px">Rating: <b id="lvl">D · Intermediate</b>. This is the starting skill level; match results adjust it over time. Tap an avatar here to edit its picture, rating, gender or privacy. Tap an avatar anywhere else to see the player's details.</div>
 <div class="chips" id="chips"></div>
@@ -375,13 +379,14 @@ button.pnm{cursor:pointer}
 <div class="row"><button id="reset">Reset rounds &amp; stats</button><button id="clearall">Clear all players</button></div>
 <div class="card" id="guide" style="margin-top:14px">
 <h2>Rating guide</h2>
-<div class="grow"><span class="tb rk-S">S</span><b>5.0+</b><span>Elite</span></div>
-<div class="grow"><span class="tb rk-A">A</span><b>4.5–4.99</b><span>Expert</span></div>
-<div class="grow"><span class="tb rk-B">B</span><b>4.0–4.49</b><span>Advanced</span></div>
-<div class="grow"><span class="tb rk-C">C</span><b>3.5–3.99</b><span>Strong Intermediate</span></div>
-<div class="grow"><span class="tb rk-D">D</span><b>3.0–3.49</b><span>Intermediate</span></div>
-<div class="grow" style="border:0"><span class="tb rk-E">E</span><b>2.0–2.99</b><span>Beginner</span></div>
-<div class="empty" style="margin-top:8px">Enter the closest rating when adding a player. It adjusts automatically with wins and losses.</div>
+<div class="empty" style="margin:-4px 0 8px">Follows the DUPR scale (2.000 to 8.000). The class letters are this app's shorthand.</div>
+<div class="grow"><span class="tb rk-S">S</span><b>5.000–8.000</b><span>Elite / Pro</span></div>
+<div class="grow"><span class="tb rk-A">A</span><b>4.500–4.999</b><span>Advanced Competitive</span></div>
+<div class="grow"><span class="tb rk-B">B</span><b>4.000–4.499</b><span>Advanced</span></div>
+<div class="grow"><span class="tb rk-C">C</span><b>3.500–3.999</b><span>Upper Intermediate</span></div>
+<div class="grow"><span class="tb rk-D">D</span><b>3.000–3.499</b><span>Lower Intermediate</span></div>
+<div class="grow" style="border:0"><span class="tb rk-E">E</span><b>2.000–2.999</b><span>Beginner</span></div>
+<div class="empty" style="margin-top:8px">Enter the closest rating when adding a player. It adjusts automatically with wins and losses. A player's official DUPR comes only from DUPR.</div>
 </div>
 </section>
 <section id="t-play" class="tab" hidden>
@@ -405,6 +410,7 @@ button.pnm{cursor:pointer}
 
 <div class="card" id="out" hidden>
 <h2 id="rt">Round 1</h2>
+<button class="undo" id="undobtn" hidden>↩️ Undo last match</button>
 <div id="courts"></div>
 <div class="bench" id="bench"></div>
 <button class="big" id="callallbtn" hidden style="margin-top:8px">📣 Call everyone on the courts</button>
@@ -519,7 +525,7 @@ button.pnm{cursor:pointer}
 </div></div>
 <div id="avmodal" hidden><div class="avbox">
 <div class="row" style="justify-content:space-between"><div class="row"><span id="avprev"></span><b id="avname"></b></div><button id="avdone" class="p">Done</button></div>
-<div class="row" id="avraterow" style="margin-top:12px"><label for="avrate">Rating</label><input id="avrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" style="flex:0 0 80px"><span id="avlvl" class="empty"></span></div>
+<div class="row" id="avraterow" style="margin-top:12px"><label for="avrate">Rating</label><input id="avrate" type="number" inputmode="decimal" step="0.1" min="2" max="8" style="flex:0 0 80px"><span id="avlvl" class="empty"></span></div>
 <div class="lab" style="margin-top:12px">Gender</div>
 <div class="seg2" id="avgender" style="margin:6px 0 4px"><button data-g="m">♂ Male</button><button data-g="f">♀ Female</button><button data-g="h">Hidden</button></div>
 <div id="avtolwrap"><div class="lab" style="margin-top:12px">Match tolerance</div><select id="avtol" style="width:100%;margin:6px 0 4px"><option value="1">1 · 🎯 Strict: very close skill levels only</option><option value="2">2 · 🏆 Competitive: favors closely matched opponents</option><option value="3">3 · ⚖️ Balanced: fairness + finding a match</option><option value="4">4 · 🤝 Flexible: wider skill difference allowed</option><option value="5">5 · 🎉 Open: match with a broad range of players</option></select></div>
@@ -550,13 +556,25 @@ const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(M
 const valid=c=>Number.isFinite(c.sa)&&Number.isFinite(c.sb)&&c.sa!==c.sb;
 const isOpen=c=>{const n=c.n||0;return !!n&&(c.A.length<n||c.B.length<n)};
 const winner=c=>isOpen(c)?null:(c.win||(valid(c)?(c.sa>c.sb?"a":"b"):null));
+let LAST_UNDO=null;
+function ensureTimer(c){if(c.telapsed==null)c.telapsed=0;if(c.t0===undefined)c.t0=winner(c)?null:Date.now()}
+function syncTimer(c){ensureTimer(c);const w=!!winner(c);if(w&&c.t0){c.telapsed+=Date.now()-c.t0;c.t0=null}else if(!w&&!c.t0){c.t0=Date.now()}}
+function timerStr(c){ensureTimer(c);const ms=(c.telapsed||0)+(c.t0?Date.now()-c.t0:0),mm=Math.floor(ms/60000),ss=Math.floor((ms%60000)/1000);return mm+":"+String(ss).padStart(2,"0")}
+setInterval(()=>{
+  if(!S.cur)return;
+  document.querySelectorAll("[data-timer]").forEach(el=>{
+    const i=+el.dataset.timer,c=S.cur.courts[i];
+    if(!c||!c.t0)return;
+    el.textContent="⏱ "+timerStr(c);
+  });
+},1000);
 
 const tier=r=>r>=5?"S":r>=4.5?"A":r>=4?"B":r>=3.5?"C":r>=3?"D":"E";
 const badge=r=>`<span class="tb rk-${tier(r)}">${tier(r)}</span>`;
 const short=t=>t.length>6?t.slice(0,5)+"…":t;
 const sn=id=>{const p=S.players.find(x=>x.id===id);return p?esc(short(p.name)):"?"};
-function level(r){return r>=5?"Elite":r>=4.5?"Expert":r>=4?"Advanced":r>=3.5?"Strong Intermediate":r>=3?"Intermediate":"Beginner"}
-const clampR=v=>Math.min(6,Math.max(2,isNaN(v)?3:v));
+function level(r){return r>=5?"Elite / Pro":r>=4.5?"Advanced Competitive":r>=4?"Advanced":r>=3.5?"Upper Intermediate":r>=3?"Lower Intermediate":"Beginner"}
+const clampR=v=>Math.min(8,Math.max(2,isNaN(v)?3:v)); // DUPR scale: 2.000 to 8.000
 let RT={},RG={};
 function ratings(incl=true){
   const R={},g={};
@@ -651,6 +669,7 @@ function generate(){
   const pool=S.players.filter(p=>!p.hold);
   const maxCourts=Math.min(S.courts,Math.floor(pool.length/per));
   if(maxCourts<1){const m=$("msg");m.textContent="Need at least "+per+" available players for "+(S.mode===2?"doubles":"singles")+".";setTimeout(()=>m.textContent="",4000);return}
+  LAST_UNDO=null;
   if(S.cur)S.hist.push(...S.cur.courts.map((c,i)=>[c,i]).filter(z=>winner(z[0])).map(z=>hrow(z[0],z[1])));
   const need=maxCourts*per;
   const order=queue(pool);
@@ -672,6 +691,7 @@ function generate(){
       if(c2<cur-1e-9)cur=c2;else[groups[a][i],groups[b][j]]=[groups[b][j],groups[a][i]];
     }
   }
+  const now0=Date.now();
   for(let c=0;c<maxCourts;c++){
     const g=groups[c];
     if(S.mode===2){
@@ -679,8 +699,8 @@ function generate(){
       const av2=t=>(R[t[0]]+R[t[1]])/2;
       const cost=o=>Math.abs(av2(o[0])-av2(o[1]))+0.12*((S.partner[k(...o[0])]||0)+(S.partner[k(...o[1])]||0));
       const o=opts.reduce((b,x)=>cost(x)<cost(b)?x:b);
-      best.push({A:o[0],B:o[1],n:2,sa:null,sb:null,win:null});
-    }else best.push({A:[g[0]],B:[g[1]],n:1,sa:null,sb:null,win:null});
+      best.push({A:o[0],B:o[1],n:2,sa:null,sb:null,win:null,t0:now0,telapsed:0});
+    }else best.push({A:[g[0]],B:[g[1]],n:1,sa:null,sb:null,win:null,t0:now0,telapsed:0});
   }
   for(const c of best){
     if(S.mode===2){S.partner[k(...c.A)]=(S.partner[k(...c.A)]||0)+1;S.partner[k(...c.B)]=(S.partner[k(...c.B)]||0)+1}
@@ -835,6 +855,7 @@ ${tl?`<div class="pft pfw"><small>Tournament</small><b>${tl}</b></div>`:""}</div
   if(!p.hr){
     const mem=p.mid&&RM?RM.members.find(m=>m.uid===p.mid):null,tl=(mem&&mem.tol)||p.tol;
     const bits=[];
+    if(mem&&typeof mem.dupr==="number")bits.push(`<div class="pft pfw"><small>DUPR</small><b>${mem.dupr.toFixed(3)}</b><small>Official, from DUPR</small></div>`);
     if(tl)bits.push(`<div class="pft pfw"><small>Match tolerance</small><b>${esc(tolLbl(tl))}</b><small>${esc((TOLS[tl]||TOLS[3]).d)}</small></div>`);
     if(mem&&mem.age!=null&&mem.age!=="")bits.push(`<div class="pft"><small>Age</small><b>${esc(mem.age)}</b></div>`);
     if(mem&&mem.loc)bits.push(`<div class="pft"><small>Location</small><b>${esc(mem.loc)}</b></div>`);
@@ -875,13 +896,17 @@ function team(c,s){
   for(let x=a.length;x<n;x++)h+='<div class="pl open">— open slot —</div>';
   return h;
 }
-function head(c,i){return `<h3><span>Court ${i+1}<small class="rb">· avg ${avgR(c.A).toFixed(1)} vs ${avgR(c.B).toFixed(1)}</small></span><span class="hb">${RM&&RM.host&&playerUids([...c.A,...c.B]).length?`<button class="sk call" data-callc="${i}">📣 Call</button>`:""}${isOpen(c)&&outside().length?`<button class="sk" data-fill="${i}">Fill open slot</button>`:""}</span></h3>`}
+function head(c,i){
+  const w=!!winner(c);
+  return `<h3><span>Court ${i+1}<small class="rb">· avg ${avgR(c.A).toFixed(1)} vs ${avgR(c.B).toFixed(1)}</small></span><span class="hb"><span class="timer${w?" stopped":""}" data-timer="${i}" title="${w?"Match time":"Match running"}">⏱ ${timerStr(c)}</span>${RM&&RM.host&&playerUids([...c.A,...c.B]).length?`<button class="sk call" data-callc="${i}">📣 Call</button>`:""}${isOpen(c)&&outside().length?`<button class="sk" data-fill="${i}">Fill open slot</button>`:""}</span></h3>`;
+}
 function skipPlayer(id){
   if(!S.cur)return;
   const p=S.players.find(x=>x.id===id),c=S.cur.courts.find(x=>x.A.includes(id)||x.B.includes(id));
   if(!p||!c)return;
+  LAST_UNDO=null;
   const side=c.A.includes(id)?"A":"B",idx=c[side].indexOf(id);
-  c.win=null;c.sa=c.sb=null;
+  c.win=null;c.sa=c.sb=null;syncTimer(c);
   p.hold=true;p.skip=S.round;p.played=Math.max(0,p.played-1);
   const cand=queue(S.players.filter(x=>!x.hold&&S.cur.bench.includes(x.id)))[0];
   if(cand){c[side][idx]=cand.id;S.cur.bench=S.cur.bench.filter(b=>b!==cand.id);cand.played++;cand.sat=0}
@@ -891,6 +916,7 @@ function skipPlayer(id){
 function fill(i){
   const c=S.cur&&S.cur.courts[i],p=outside()[0];
   if(!c||!isOpen(c)||!p)return;
+  LAST_UNDO=null;
   c[c.A.length<c.n?"A":"B"].push(p.id);
   S.cur.bench=S.cur.bench.filter(b=>b!==p.id);p.played++;p.sat=0;
   save();render();
@@ -899,12 +925,21 @@ function nextMatch(i){
   if(!S.cur)return;
   const old=S.cur.courts[i];
   if(!old||!winner(old))return;
+  LAST_UNDO={
+    i,
+    courts:JSON.parse(JSON.stringify(S.cur.courts)),
+    bench:S.cur.bench.slice(),
+    histLen:S.hist.length,
+    players:S.players.map(p=>({id:p.id,played:p.played,sat:p.sat})),
+    partner:JSON.parse(JSON.stringify(S.partner)),
+    opp:JSON.parse(JSON.stringify(S.opp))
+  };
   S.hist.push(hrow(old,i));
   const per=S.mode===2?4:2,n=per/2;
   const onCourt=new Set();
   S.cur.courts.forEach((c,j)=>{if(j!==i){c.A.forEach(x=>onCourt.add(x));c.B.forEach(x=>onCourt.add(x))}});
   const justDone=new Set([...old.A,...old.B]);
-  const nc={A:[],B:[],n,sa:null,sb:null,win:null};
+  const nc={A:[],B:[],n,sa:null,sb:null,win:null,t0:Date.now(),telapsed:0};
   S.cur.courts[i]=nc; // placeholder so the finished match isn't counted twice
   const R=ratings(true);
   const pick=pickGroup(queue(S.players.filter(p=>!p.hold&&!onCourt.has(p.id))),per,R);
@@ -933,6 +968,18 @@ function nextMatch(i){
   const m=$("msg");
   if(pick.length<per){m.textContent="Court "+(i+1)+(pick.length?" has open slots":" is empty")+" — not enough free players yet. Add or resume players, then tap Fill open slot.";setTimeout(()=>m.textContent="",5000)}
   save();render();
+}
+function undoLastMatch(){
+  const u=LAST_UNDO;
+  if(!u||!S.cur)return;
+  S.cur.courts=u.courts;
+  S.cur.bench=u.bench;
+  S.hist.length=u.histLen;
+  u.players.forEach(up=>{const p=S.players.find(x=>x.id===up.id);if(p){p.played=up.played;p.sat=up.sat}});
+  S.partner=u.partner;S.opp=u.opp;
+  LAST_UNDO=null;
+  save();render();
+  toast("Undid Court "+(u.i+1)+"'s last match.");
 }
 function renderIso(){
   const h=S.players.filter(p=>p.hold);
@@ -967,6 +1014,7 @@ function render(){
   const o=$("out");
   if(S.cur){
     o.hidden=false;$("rt").textContent="Round "+S.round;
+    const ub=$("undobtn");if(ub){ub.hidden=!LAST_UNDO;if(LAST_UNDO)ub.textContent="↩️ Undo Court "+(LAST_UNDO.i+1)+"'s last match"}
     $("courts").innerHTML=S.cur.courts.map((c,i)=>`<div class="court">${head(c,i)}<div class="teams"><div class="team a">${team(c,"A")}</div><div class="vs">vs</div><div class="team b">${team(c,"B")}</div></div><div class="wins"><button data-w="a" data-c="${i}" ${isOpen(c)?"disabled":""} class="${winner(c)==='a'?'on':''}">🏆 Winner</button><button data-w="b" data-c="${i}" ${isOpen(c)?"disabled":""} class="${winner(c)==='b'?'on':''}">🏆 Winner</button></div><div class="score"><input type="number" inputmode="numeric" min="0" placeholder="Score (optional)" data-c="${i}" data-s="sa" value="${c.sa??""}"><span>–</span><input type="number" inputmode="numeric" min="0" placeholder="Score (optional)" data-c="${i}" data-s="sb" value="${c.sb??""}"></div><div class="nextm"><button class="p" data-next="${i}" ${winner(c)?"":"disabled"}>✅ Match done · Next match ▶</button>${winner(c)?"":'<small>Pick a winner to free this court</small>'}</div></div>`).join("");
     decorateCourts();
     const b=S.cur.bench.filter(id=>S.players.some(p=>p.id===id&&!p.hold));
@@ -996,9 +1044,11 @@ $("courts").oninput=e=>{
   const t=e.target,c=S.cur&&S.cur.courts[+t.dataset.c];if(!c||!t.dataset.s)return;
   c[t.dataset.s]=t.value===""?null:Math.max(0,parseInt(t.value,10));
   if(valid(c))c.win=c.sa>c.sb?"a":"b";
+  syncTimer(c);
   onDecide(c,+t.dataset.c);
   document.querySelectorAll('[data-w][data-c="'+t.dataset.c+'"]').forEach(x=>x.classList.toggle("on",winner(c)===x.dataset.w));
   {const nb=document.querySelector('[data-next="'+t.dataset.c+'"]');if(nb){nb.disabled=!winner(c);const h=nb.parentNode.querySelector("small");if(h)h.hidden=!!winner(c)}}
+  {const tw=document.querySelector('[data-timer="'+t.dataset.c+'"]');if(tw){tw.textContent="⏱ "+timerStr(c);tw.classList.toggle("stopped",!!winner(c))}}
   save();renderRank();
 };
 $("isolist").onclick=e=>{const h=+e.target.dataset.h;if(h)toggleHold(h)};
@@ -1016,6 +1066,7 @@ $("courts").onclick=e=>{
   const c=S.cur.courts[+b.dataset.c],w=b.dataset.w;
   if(winner(c)===w){c.win=null;c.sa=c.sb=null}
   else{c.win=w;if(valid(c)&&(c.sa>c.sb?"a":"b")!==w)c.sa=c.sb=null}
+  syncTimer(c);
   onDecide(c,+b.dataset.c);
   save();render();
 };
@@ -1024,6 +1075,7 @@ $("m2").onclick=()=>{S.mode=2;save();render()};
 $("cm").onclick=()=>{S.courts=Math.max(1,S.courts-1);save();render()};
 $("cp").onclick=()=>{S.courts=Math.min(12,S.courts+1);save();render()};
 $("go").onclick=generate;
+$("undobtn").onclick=undoLastMatch;
 $("egrid").onclick=e=>{const b=e.target.closest("[data-e]"),p=avP();if(!b||!p)return;p.av={t:"e",v:b.dataset.e};commitAv()};
 $("avrate").onchange=()=>{const p=avP();if(!p)return;p.rt=Math.round(clampR(parseFloat($("avrate").value))*100)/100;save();render();renderAv()};
 $("avgender").onclick=e=>{const b=e.target.closest("[data-g]"),p=avP();if(!b||!p)return;p.g=b.dataset.g;commitAv()};
@@ -1525,9 +1577,10 @@ function arm(id,label,fn){
     b.dataset.arm="1";b.textContent=label;b.classList.add("danger");t=setTimeout(off,4000);
   };
 }
-function resetRounds(){const R=ratings(true),G=RG;S.players.forEach(p=>{p.rt=Math.round(R[p.id]*100)/100;p.gm=G[p.id];p.played=0;p.sat=0});S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.ended=false;S.endRounds=0;S.sid=null;S.endedAt=null;S.feed=[];S.sk=null;S.sa=null;save();render()}
+function resetRounds(){LAST_UNDO=null;const R=ratings(true),G=RG;S.players.forEach(p=>{p.rt=Math.round(R[p.id]*100)/100;p.gm=G[p.id];p.played=0;p.sat=0});S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.ended=false;S.endRounds=0;S.sid=null;S.endedAt=null;S.feed=[];S.sk=null;S.sa=null;save();render()}
 function endPlay(){
   if(!S.cur)return;
+  LAST_UNDO=null;
   S.hist.push(...S.cur.courts.map((c,i)=>[c,i]).filter(z=>winner(z[0])).map(z=>hrow(z[0],z[1])));
   S.cur=null;S.ended=true;S.endRounds=S.round;S.endedAt=Date.now();
   setRV("open");save();render();celebrate("full");showTab("rank");
@@ -1535,7 +1588,7 @@ function endPlay(){
 arm("endplay","Tap again to end open play",endPlay);
 arm("newplay","Tap again to start fresh",resetRounds);
 arm("reset","Tap again to reset",resetRounds);
-arm("clearall","Tap again to delete all",()=>{S.players=[];S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.uid=1;S.ended=false;save();render()});
+arm("clearall","Tap again to delete all",()=>{LAST_UNDO=null;S.players=[];S.round=0;S.cur=null;S.hist=[];S.partner={};S.opp={};S.uid=1;S.ended=false;save();render()});
 const TS={kind:"ko",mode:1,form:"bal",seed:"rating",ex:{},name:"",rounds:4,courts:2,pairs:[],pick:null};
 const ord=n=>n+(["th","st","nd","rd"][(n%100>10&&n%100<14)?0:(n%10<4?n%10:0)]);
 const kk2=(a,b)=>a<b?a+"-"+b:b+"-"+a;
@@ -1805,12 +1858,12 @@ async function makeProfile(u,name){
     try{await f.fs.setDoc(f.fs.doc(f.db,"accounts",t),{uid:u.uid});no=t}
     catch(e){if(i===5||e.code!=="permission-denied")throw e}
   }
-  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now(),rating:3,startRating:3,games:0,avatar:null,age:null,loc:"",food:"",tol:3,share:false});
-  ME={uid:u.uid,email:u.email,name,acct:no,av:null,rating:3,games:0,hist:[],age:null,loc:"",food:"",tol:3,share:false};resetDraft();
+  await f.fs.setDoc(f.fs.doc(f.db,"users",u.uid),{name,accountNo:no,email:u.email,createdAt:Date.now(),rating:3,startRating:3,games:0,avatar:null,age:null,loc:"",food:"",tol:3,share:false,resetAt:0});
+  ME={uid:u.uid,email:u.email,name,acct:no,av:null,rating:3,games:0,hist:[],age:null,loc:"",food:"",tol:3,share:false,resetAt:0,dupr:null,duprId:"",duprAt:0,duprReq:""};resetDraft();listenMe();
 }
 async function loadProfile(u){
   const f=FB,snap=await f.fs.getDoc(f.fs.doc(f.db,"users",u.uid));
-  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo,av:d.avatar||null,rating:d.rating??3,games:d.games||0,hist:[],age:d.age??null,loc:d.loc||"",food:d.food||"",tol:d.tol>=1&&d.tol<=5?d.tol:3,share:!!d.share};resetDraft();loadHistory();return}
+  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo,av:d.avatar||null,rating:d.rating??3,games:d.games||0,hist:[],age:d.age??null,loc:d.loc||"",food:d.food||"",tol:d.tol>=1&&d.tol<=5?d.tol:3,share:!!d.share,resetAt:Number(d.resetAt)||0,dupr:typeof d.dupr==="number"?d.dupr:null,duprId:d.duprId?String(d.duprId):"",duprAt:Number(d.duprAt)||0,duprReq:d.duprReq?String(d.duprReq):""};resetDraft();loadHistory();listenMe();return}
   await makeProfile(u,u.displayName||(u.email||"Player").split("@")[0]);
 }
 function openStart(view){
@@ -1936,12 +1989,37 @@ function memberDetails(){
   if(!ME)return {};
   const o={tol:ME.tol||3};
   o.age=ME.share&&ME.age!=null?ME.age:null;o.loc=ME.share?ME.loc||"":"";o.food=ME.share?ME.food||"":"";
-  o.av=memberAv();o.hp=!!mePref().hp;
+  o.av=memberAv();o.hp=!!mePref().hp;o.dupr=typeof ME.dupr==="number"?ME.dupr:null;
   return o;
 }
 function syncMember(){
   if(!(FB&&RM&&ME))return;
-  FB.fs.updateDoc(FB.fs.doc(FB.db,"rooms",RM.id,"members",ME.uid),memberDetails()).catch(()=>{});
+  FB.fs.updateDoc(FB.fs.doc(FB.db,"rooms",RM.id,"members",ME.uid),{rating:ME.rating,games:ME.games,rs:ME.resetAt||0,...memberDetails()}).catch(()=>{});
+}
+/* Ratings and DUPR are controlled by the developers only (Firebase console or the admin scripts).
+   Nothing in this app can reset a rating: the app only DISPLAYS what the server says.
+   When the developers reset an account they change rating/games/resetAt on users/{uid}; this listener shows it live. */
+let meUnsub=null;
+function stopMe(){try{if(meUnsub)meUnsub()}catch(e){}meUnsub=null}
+function listenMe(){
+  if(!(FB&&ME))return;
+  stopMe();const uid=ME.uid;
+  meUnsub=FB.fs.onSnapshot(FB.fs.doc(FB.db,"users",uid),snap=>{
+    if(!ME||ME.uid!==uid||!snap.exists())return;
+    const d=snap.data();let ch=false,reset=false;
+    const set=(k,v)=>{if(ME[k]!==v){ME[k]=v;ch=true}};
+    const ra=Number(d.resetAt)||0;
+    if(ra>(ME.resetAt||0)){reset=true;ME.resetAt=ra;ch=true}
+    if(typeof d.rating==="number")set("rating",d.rating);
+    set("games",d.games||0);
+    set("dupr",typeof d.dupr==="number"?d.dupr:null);
+    set("duprId",d.duprId?String(d.duprId):"");
+    set("duprAt",Number(d.duprAt)||0);
+    set("duprReq",d.duprReq?String(d.duprReq):"");
+    if(!ch)return;
+    if(reset){ME.hist=[];loadHistory();toast("Your rating was updated by the admin: "+ME.rating.toFixed(2)+".")}
+    try{syncMember();renderAcct();renderHist()}catch(e){}
+  },()=>{});
 }
 async function saveUser(fields,okMsg){
   if(!(FB&&ME))return false;
@@ -1957,6 +2035,20 @@ async function saveDetails(){
 }
 const GEAR='<button id="gear" class="gearb" aria-label="Settings" title="Settings">⚙️</button>';
 const noneTxt=t=>`<span class="none">${t}</span>`;
+function duprBlock(){
+  if(typeof ME.dupr==="number")
+    return `<h2 style="margin-top:14px">DUPR</h2>
+<div class="row" style="gap:12px;align-items:center"><span style="font-size:2.4rem;font-weight:800;line-height:1">${ME.dupr.toFixed(3)}</span><span style="padding:3px 10px;border-radius:999px;background:rgba(110,231,160,.16);color:#6ee7a0;font-weight:700;font-size:.85rem">✔ Official DUPR</span></div>
+<div class="empty" style="margin-top:4px">${ME.duprId?"DUPR ID "+esc(ME.duprId)+" · ":""}${ME.duprAt?"updated "+new Date(ME.duprAt).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):"from DUPR"}. Only the admin can change this.</div>`;
+  if(ME.duprReq)
+    return `<h2 style="margin-top:14px">DUPR</h2><div class="empty">Waiting for the admin to verify DUPR ID <b>${esc(ME.duprReq)}</b>. Your official rating will appear here.</div>`;
+  return `<h2 style="margin-top:14px">DUPR</h2><div class="empty">No DUPR linked yet. Add your DUPR ID in Settings ⚙️ and the admin will verify it.</div>`;
+}
+function duprCard(){
+  if(typeof ME.dupr==="number")return `<div class="card"><h2 style="margin-top:0">DUPR</h2><div class="empty">Your official DUPR (${ME.dupr.toFixed(3)}) comes from DUPR and is managed by the admin. It cannot be edited here.</div></div>`;
+  return `<div class="card"><h2 style="margin-top:0">DUPR</h2><div class="empty" style="margin-bottom:8px">Enter your DUPR ID. The admin checks it with DUPR and then your official rating shows on your account. You cannot type in a rating yourself.</div>
+<div class="row" style="flex-wrap:nowrap"><input id="duprreq" maxlength="24" placeholder="DUPR ID" value="${esc(ME.duprReq||"")}" style="flex:1;min-width:0"><button class="p" id="duprsave">Send</button></div></div>`;
+}
 function renderAcct(){
   renderRoom();renderHist();
   const c=$("acctcard");
@@ -1968,6 +2060,7 @@ function renderAcct(){
 <h2 style="margin-top:14px">My rating</h2>
 <div class="row" style="gap:12px;align-items:center"><span style="font-size:2.4rem;font-weight:800;line-height:1">${lv.toFixed(2)}</span>${badge(lv)}<span>${level(lv)}</span></div>
 <div class="empty" style="margin-top:4px">${g} rated game${g===1?"":"s"}${g===0?" · set your starting level in Settings":""}</div>
+${duprBlock()}
 <h2 style="margin-top:14px">About me</h2>
 <dl class="kv">
 <dt>Age</dt><dd>${ME.age!=null?esc(ME.age):noneTxt("Not set")}</dd>
@@ -1996,8 +2089,8 @@ function renderSettings(force){
     h+=`<div class="card"><h2 style="margin-top:0">My account</h2>
 <div class="row" style="flex-wrap:nowrap;gap:14px"><button class="avb" id="myav" aria-label="Change avatar">${av({name:ME.name,av:ME.av},76)}</button><div style="min-width:0"><div style="font-weight:800;overflow:hidden;text-overflow:ellipsis">${esc(ME.name)}</div><div class="empty" style="overflow:hidden;text-overflow:ellipsis">${esc(ME.email)}</div><div class="empty">WP-${esc(ME.acct)}</div></div></div>
 <div class="empty" style="margin-top:6px">Tap your avatar to change it.</div>
-${g===0?`<div class="row" style="margin-top:12px"><label for="myrate">Starting level</label><input id="myrate" type="number" inputmode="decimal" step="0.1" min="2" max="6" value="${lv.toFixed(1)}" style="flex:0 0 90px"></div><div class="empty" style="margin-top:6px">Set this before your first open play. After that your rating updates by itself.</div>`:`<div class="empty" style="margin-top:8px">Your rating (${lv.toFixed(2)}) updates by itself after every open play you finish.</div>`}</div>
-<div class="card">${detailsHtml()}</div>`;
+${g===0?`<div class="row" style="margin-top:12px"><label for="myrate">Starting level</label><input id="myrate" type="number" inputmode="decimal" step="0.1" min="2" max="8" value="${lv.toFixed(1)}" style="flex:0 0 90px"></div><div class="empty" style="margin-top:6px">Set this before your first open play. After that your rating updates by itself.</div>`:`<div class="empty" style="margin-top:8px">Your rating (${lv.toFixed(2)}) updates by itself after every open play you finish.</div>`}</div>
+<div class="card">${detailsHtml()}</div>${duprCard()}`;
   }else if(S.net==="online"){
     h+=`<div class="card"><h2 style="margin-top:0">My account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button></div></div>`;
   }else{
@@ -2063,7 +2156,7 @@ async function enterRoom(id){
   const d=snap.data();
   RM={id,host:d.hostUid===ME.uid,name:d.name,hostName:d.hostName,members:[],seen:false,unsubs:[]};
   LOCALS=S;applyState(d);
-  await f.fs.setDoc(f.fs.doc(f.db,"rooms",id,"members",ME.uid),{name:ME.name,acct:ME.acct,joinedAt:Date.now(),rating:ME.rating,games:ME.games,av:ME.av&&ME.av.t==="e"?ME.av:null,...memberDetails()});
+  await f.fs.setDoc(f.fs.doc(f.db,"rooms",id,"members",ME.uid),{name:ME.name,acct:ME.acct,joinedAt:Date.now(),rating:ME.rating,games:ME.games,rs:ME.resetAt||0,av:ME.av&&ME.av.t==="e"?ME.av:null,...memberDetails()});
   RM.unsubs.push(f.fs.onSnapshot(ref,s=>{
     if(!RM)return;
     const x=s.data();
@@ -2076,7 +2169,7 @@ async function enterRoom(id){
   RM.unsubs.push(f.fs.onSnapshot(f.fs.collection(f.db,"rooms",id,"members"),qs=>{
     if(!RM)return;
     RM.members=qs.docs.map(m=>Object.assign({uid:m.id},m.data())).sort((a,b)=>a.joinedAt-b.joinedAt);linkMemberAvatars();
-    if(RM.host){let ch=false;S.players.forEach(p=>{if(!p.mid)return;const m=RM.members.find(x=>x.uid===p.mid);if(m&&m.tol>=1&&m.tol<=5&&p.tol!==m.tol){p.tol=m.tol;ch=true}});if(ch)save()}
+    if(RM.host){let ch=false;S.players.forEach(p=>{if(!p.mid)return;const m=RM.members.find(x=>x.uid===p.mid);if(m&&m.tol>=1&&m.tol<=5&&p.tol!==m.tol){p.tol=m.tol;ch=true}if(m&&(m.rs||0)>(p.rs||0)){if(typeof m.rating==="number")p.rt=m.rating;p.gm=m.games||0;p.rs=m.rs;ch=true}});if(ch)save()}
     ingestAll();
     if(RM.members.some(m=>m.uid===ME.uid))RM.seen=true;
     else if(RM.seen&&!RM.host){leaveRoom("You were removed from the room.",true);return}
@@ -2145,7 +2238,7 @@ $("roomcard").onclick=async e=>{
     if(!m)return;
     if(S.players.some(p=>p.mid===m.uid)){toast(m.name+" is already a player.");return}
     const act=S.players.filter(p=>!p.hold),min=act.length?Math.min(...act.map(p=>p.played)):0;
-    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:m.rating??3,gm:m.games||0,av:m.av||null,avm:m.av?1:0,hp:!!m.hp,mid:m.uid,tol:m.tol>=1&&m.tol<=5?m.tol:3});
+    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:m.rating??3,gm:m.games||0,rs:m.rs||0,av:m.av||null,avm:m.av?1:0,hp:!!m.hp,mid:m.uid,tol:m.tol>=1&&m.tol<=5?m.tol:3});
     save();render();toast(m.name+" added to players.");
   }
 };
@@ -2318,6 +2411,7 @@ function renderHist(){
 async function settleSession(){
   if(!(RM&&ME&&FB&&S.ended&&S.sid))return;
   const p=S.players.find(q=>q.mid===ME.uid);if(!p)return;
+  if((S.endedAt||Date.now())<(ME.resetAt||0))return; // finished before a rating reset
   const pl=stats().filter(x=>x.w+x.l>0),idx=pl.findIndex(x=>x.p.id===p.id);
   if(idx<0)return;
   const x=pl[idx],R=ratings(true),after=Math.round(R[p.id]*100)/100,key=RM.id+"_"+S.sid;
@@ -3124,10 +3218,16 @@ const acctClick=async e=>{
   if(id==="setback"){closeSettings();return}
   if(id==="chkupd"){updMsg="checking…";renderSettings(true);checkUpdate(true);return}
   if(id==="dsave"){saveDetails();return}
+  if(id==="duprsave"&&ME){
+    const v=($("duprreq").value||"").trim().replace(/[^A-Za-z0-9-]/g,"");
+    if(v.length<4){toast("Enter your DUPR ID (at least 4 characters).");return}
+    if(await saveUser({duprReq:v},"Sent. The admin will verify your DUPR ID.")){renderAcct()}
+    return;
+  }
   if(id==="signin"){openStart("auth")}
   else if(e.target.closest("#myav"))openAv("me");
-  else if(id==="useoff"){await leaveRoom();S.net="offline";save();renderAcct()}
-  else if(id==="logout"){await leaveRoom();try{const f=await fbLoad();await f.au.signOut(f.auth)}catch(x){}ME=null;S.net="offline";save();renderAcct()}
+  else if(id==="useoff"){await leaveRoom();stopMe();S.net="offline";save();renderAcct()}
+  else if(id==="logout"){await leaveRoom();stopMe();try{const f=await fbLoad();await f.au.signOut(f.auth)}catch(x){}ME=null;S.net="offline";save();renderAcct()}
   else if(id==="cpacct"&&ME){
     const t="WP-"+ME.acct;
     try{await navigator.clipboard.writeText(t)}catch(x){}
