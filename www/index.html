@@ -116,6 +116,14 @@ body.ro #t-tour :is(button:not(.keep),input),body.ro #t-players :is(button,input
 #grand.hit .gbanner{animation:gban 3.8s cubic-bezier(.2,1.3,.3,1) both}
 @keyframes gban{0%{opacity:0;transform:scale(.3)}12%{opacity:1;transform:scale(1.12)}22%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(1.06)}}
 @media (prefers-reduced-motion:reduce){#grand .beam,#grand .gflash{display:none}#grand.hit .gbanner{animation:gfade 3s both}@keyframes gfade{0%,100%{opacity:0}15%,80%{opacity:1}}}
+#undobar{position:fixed;left:12px;right:12px;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:85;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:8px;background:#1d2a4a;color:#fff;border:1px solid var(--acc);border-radius:14px;padding:8px 8px 8px 14px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+#undobar[hidden]{display:none}
+#undobar span{flex:1;min-width:0;font-size:.92rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#undobar #undogo{padding:10px 18px;font-weight:800;background:var(--acc);color:var(--accink);border-radius:10px;border:0;flex:none}
+#undobar #undox{padding:8px 10px;border:0;background:none;color:#9fb0d6;flex:none}
+.undorow{margin:0 0 10px;display:flex;gap:8px;align-items:center}
+.undorow[hidden]{display:none}
+.undorow button{flex:1;padding:12px;font-weight:700;text-align:left}
 #toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;z-index:90;background:var(--acc);color:var(--accink);font-weight:700;padding:12px 14px;border-radius:12px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 #toast[hidden]{display:none}
 #start{position:fixed;inset:0;background:var(--bg);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
@@ -359,6 +367,68 @@ button.pnm{cursor:pointer}
 #badgemodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:57;padding:16px}
 #badgemodal[hidden]{display:none}#badgemodal .avbox{max-height:92vh;overflow:auto}
 #cardmodal{z-index:58}
+/* ---- Play tab: compact, colour-coded courts ---- */
+.rrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-6px 0 10px}
+.rsum{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.82rem;color:var(--mute)}
+#cview{padding:5px 10px;font-size:.78rem;border-radius:99px;white-space:nowrap;flex:none}
+#cview[hidden]{display:none}
+#fmtd summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:2px 0 12px;font-weight:700;list-style:none}
+#fmtd summary::-webkit-details-marker{display:none}
+#fmtd summary::after{content:"Change ▾";color:var(--mute);font-size:.8rem;font-weight:600}
+#fmtd[open] summary::after{content:"Hide ▴"}
+.rsum .sd{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:baseline}
+.sd.p{background:#6ee7a0}.sd.d{background:var(--acc)}.sd.o{background:var(--warn)}
+.cnav{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;margin:0 -14px 10px;padding:8px 14px;background:var(--card);border-bottom:1px solid var(--line);box-shadow:0 8px 10px -10px rgba(0,0,0,.8)}
+.cnav[hidden],.cchips[hidden],.ctools [hidden]{display:none}
+.cchips{display:flex;gap:6px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px}
+.cchips::-webkit-scrollbar{display:none}
+.cchip{flex:none;display:flex;align-items:center;gap:5px;padding:3px 9px 3px 3px;border-radius:99px;border:2px solid transparent;background:var(--bg);color:var(--ink);font-weight:700;font-size:.8rem;font-variant-numeric:tabular-nums}
+.cchip b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--cc);color:#08111f;font-size:.85rem}
+.cchip.cur{border-color:var(--cc);background:rgba(255,255,255,.08)}
+.cchip.s-play span{color:var(--mute)}.cchip.s-done span{color:#6ee7a0}.cchip.s-open span{color:var(--warn)}
+.ctools{display:flex;gap:6px;flex:none}.ctools:empty{display:none}
+.ctools button{padding:6px 10px;font-size:.78rem;border-radius:99px;white-space:nowrap}
+#cundo{border-color:var(--acc);color:var(--acc);font-weight:700}
+#courts .court{--cc:#4da3ff;display:block;background:var(--bg);border:1px solid var(--line);border-left:5px solid var(--cc);border-radius:12px;overflow:hidden;margin-bottom:10px;scroll-margin-top:74px;transition:box-shadow .3s,border-color .3s}
+#courts .court[hidden]{display:none}
+#courts .court.cs-done{border-color:#2f8f5b;border-left-color:var(--cc)}
+#courts .court.cs-open{border-color:var(--warn);border-left-color:var(--cc)}
+#courts .court.flash{box-shadow:0 0 0 3px var(--cc),0 0 20px var(--cc)}
+#courts .chd{display:flex;align-items:center;gap:8px;margin:0;padding:8px 10px;background:var(--card);color:var(--ink);letter-spacing:0;flex-wrap:wrap;justify-content:flex-start}
+.cbadge{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:9px;background:var(--cc);color:#08111f;font-weight:800;font-size:1.05rem}
+.ctitle{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.ctitle b{font-size:1rem}.ctitle .rb{margin:0;font-size:.7rem}
+.cstat{font-size:.72rem;font-weight:700;color:var(--mute);margin-left:2px}
+.cstat::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#6ee7a0;margin-right:5px;animation:cpulse 1.6s ease-in-out infinite}
+.cs-done .cstat{color:#6ee7a0}.cs-done .cstat::before{background:#6ee7a0;animation:none}
+.cs-open .cstat{color:var(--warn)}.cs-open .cstat::before{background:var(--warn);animation:none}
+@keyframes cpulse{0%,100%{opacity:1}50%{opacity:.3}}
+#courts .chd .hb{margin-left:auto}
+#courts .team{display:flex;flex-direction:column;gap:2px;padding:8px}
+.team .pl{padding:1px 0}
+.twin{margin-top:6px;width:100%;padding:9px 6px;font-weight:700}
+.twin.on{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+.twin:disabled{opacity:.4;cursor:not-allowed}
+.cfoot{display:flex;align-items:center;gap:8px;padding:8px;border-top:1px solid var(--line)}
+.cfoot .score{display:flex;align-items:center;gap:4px;padding:0;flex:none}
+.cfoot .score small{color:var(--mute);font-size:.7rem;margin-right:2px}
+.cfoot .score input{flex:none;width:52px;padding:8px 2px;text-align:center}
+.cfoot .nextm{flex:1;min-width:0;padding:0}
+.cfoot .nextm button{width:100%;padding:10px 6px;font-weight:700;white-space:nowrap}
+#courts .cl-extra{padding:0 8px 8px}
+.cl-more{margin-top:2px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.cl-more summary{cursor:pointer;padding:8px 10px;font-size:.82rem;font-weight:700;color:var(--mute);list-style:none}
+.cl-more summary::-webkit-details-marker{display:none}
+.cl-more summary b{background:var(--acc);color:var(--accink);border-radius:99px;padding:1px 7px;margin-left:6px;font-size:.7rem}
+.cl-more[open] summary{border-bottom:1px solid var(--line)}
+.cl-more .cl-note,.cl-more .cl-rival{margin:8px}
+.cl-mood{display:flex;align-items:center;gap:8px;margin-top:6px}
+.cl-mood small{margin:0;white-space:nowrap;flex:none}
+.cl-mood>div{flex:1;display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.cl-mood button{padding:5px 0;font-size:1.05rem}
+.cl-mood button span{display:none}
+@media (max-width:360px){.cfoot .score small{display:none}.cchip{padding-right:8px}}
+@media (prefers-reduced-motion:reduce){.cstat::before{animation:none}}
 </style>
 </head>
 <body>
@@ -390,14 +460,26 @@ button.pnm{cursor:pointer}
 </div>
 </section>
 <section id="t-play" class="tab" hidden>
-<div class="card">
+<div class="card" id="fmtcard">
 <h2>Format</h2>
+<details id="fmtd" open><summary id="fmtsum">Format</summary>
 <div class="lbl"><span>Game type</span>
 <div class="seg" style="min-width:190px"><button id="m1">Singles</button><button id="m2">Doubles</button></div></div>
 <div class="lbl"><span>Courts</span>
 <div class="stepper"><button id="cm">−</button><span id="cv">2</span><button id="cp">+</button></div></div>
+</details>
 <button class="p big" id="go">Generate Round</button>
 <div class="empty" id="msg" style="margin-top:8px;color:var(--warn)"></div>
+</div>
+
+<div class="card" id="out" hidden>
+<h2 id="rt">Round 1</h2>
+<div class="rrow"><div class="rsum" id="rsum"></div><button class="keep" id="cview" hidden></button></div>
+<div class="cnav" id="cnav" hidden><div class="cchips" id="cchips" role="tablist" aria-label="Courts"></div><div class="ctools"><button class="keep" id="cundo" hidden>↩ Undo</button></div></div>
+<div id="courts"></div>
+<div class="bench" id="bench"></div>
+<button class="big" id="callallbtn" hidden style="margin-top:8px">📣 Call everyone on the courts</button>
+
 </div>
 
 <div class="card" id="deckcard" hidden>
@@ -406,15 +488,6 @@ button.pnm{cursor:pointer}
 <div class="bench" id="deckq"></div>
 <div class="bench" id="deckhint"></div>
 <button class="big" id="calldeckbtn" hidden style="margin-top:8px">📣 Call players on deck</button>
-</div>
-
-<div class="card" id="out" hidden>
-<h2 id="rt">Round 1</h2>
-<button class="undo" id="undobtn" hidden>↩️ Undo last match</button>
-<div id="courts"></div>
-<div class="bench" id="bench"></div>
-<button class="big" id="callallbtn" hidden style="margin-top:8px">📣 Call everyone on the courts</button>
-
 </div>
 
 <div class="card" id="endcard" hidden>
@@ -460,6 +533,7 @@ button.pnm{cursor:pointer}
 <div class="v-club" id="clubview" hidden></div>
 </section>
 <section id="t-tour" class="tab" hidden>
+<div class="undorow" id="tundorow" hidden><button id="tundobtn" class="rkok"></button></div>
 <div class="card" id="tourcard"></div>
 </section>
 <section id="t-badge" class="tab" hidden>
@@ -494,6 +568,7 @@ button.pnm{cursor:pointer}
 <button class="big keep" id="calldismiss">Dismiss</button>
 </div></div>
 <div id="toast" hidden></div>
+<div id="undobar" hidden role="status"><span id="undotxt"></span><button id="undogo">↩ Undo</button><button id="undox" aria-label="Dismiss">✕</button></div>
 <div id="setpanel" hidden><div class="sethd"><button id="setback" aria-label="Back">← Back</button><b>Settings</b></div><div id="setbody"></div></div>
 <canvas id="confetti" hidden></canvas>
 <div id="grand" hidden aria-hidden="true"><i class="beam b1"></i><i class="beam b2"></i><i class="beam b3"></i><div class="gflash"></div><div class="gbanner">🏆 TOURNAMENT CHAMPIONS 🏆</div></div>
@@ -529,6 +604,7 @@ button.pnm{cursor:pointer}
 <div class="lab" style="margin-top:12px">Gender</div>
 <div class="seg2" id="avgender" style="margin:6px 0 4px"><button data-g="m">♂ Male</button><button data-g="f">♀ Female</button><button data-g="h">Hidden</button></div>
 <div id="avtolwrap"><div class="lab" style="margin-top:12px">Match tolerance</div><select id="avtol" style="width:100%;margin:6px 0 4px"><option value="1">1 · 🎯 Strict: very close skill levels only</option><option value="2">2 · 🏆 Competitive: favors closely matched opponents</option><option value="3">3 · ⚖️ Balanced: fairness + finding a match</option><option value="4">4 · 🤝 Flexible: wider skill difference allowed</option><option value="5">5 · 🎉 Open: match with a broad range of players</option></select></div>
+<div class="empty" id="avlocknote" hidden style="margin-top:8px">🔒 This player controls their own privacy and gender. Only they can change them.</div>
 <label class="tgl row" style="margin:8px 0 0;flex-wrap:nowrap;gap:10px"><input type="checkbox" id="avhide"><span>Hide rating &amp; stats when this avatar is tapped</span></label>
 <label class="tgl row" style="margin:6px 0 0;flex-wrap:nowrap;gap:10px"><input type="checkbox" id="avhp"><span>Hide this photo from other players (they see initials instead)</span></label>
 <div class="egrid" id="egrid"></div>
@@ -567,6 +643,7 @@ setInterval(()=>{
     if(!c||!c.t0)return;
     el.textContent="⏱ "+timerStr(c);
   });
+  document.querySelectorAll("[data-ctimer]").forEach(el=>{const c=S.cur.courts[+el.dataset.ctimer];if(c&&c.t0)el.textContent=timerStr(c)});
 },1000);
 
 const tier=r=>r>=5?"S":r>=4.5?"A":r>=4?"B":r>=3.5?"C":r>=3?"D":"E";
@@ -607,7 +684,14 @@ const mePref=set=>{const k="wp-me-"+(ME&&ME.uid);let o={};try{o=JSON.parse(local
 const avP=()=>avId==="me"&&ME?{name:ME.name,get av(){return ME.av},set av(v){ME.av=v},get g(){return mePref().g||"h"},set g(v){mePref({g:v})},get hr(){return !!mePref().hr},set hr(v){mePref({hr:v})},get hp(){return !!mePref().hp},set hp(v){mePref({hp:v})}}:S.players.find(x=>x.id===avId);
 async function saveProfile(){
   if(!(FB&&ME))return;
-  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),{avatar:ME.av||null})}catch(e){toast(fbErr(e))}
+  const lp=mePref();
+  try{await FB.fs.updateDoc(FB.fs.doc(FB.db,"users",ME.uid),{avatar:ME.av||null,pref:{hr:!!lp.hr,hp:!!lp.hp,g:lp.g||"h"}})}catch(e){toast(fbErr(e))}
+}
+// the account's saved privacy choices win; the first time, this device's choices are moved to the account
+function adoptPref(d){
+  const sp=d&&d.pref&&typeof d.pref==="object"?d.pref:null,lp=mePref();
+  if(sp)mePref({hr:!!sp.hr,hp:!!sp.hp,g:sp.g||"h"});
+  else if(lp&&(lp.hr||lp.hp||(lp.g&&lp.g!=="h")))saveProfile();
 }
 function commitAv(){if(avId==="me"){saveProfile();syncMember();renderAcct()}else save();renderAv();render()}
 function openAv(id){avId=id;renderAv();$("avmodal").hidden=false}
@@ -615,7 +699,7 @@ function renderAv(){
   const p=avP();if(!p)return;const me=avId==="me";
   $("avprev").innerHTML=av(p,48);$("avname").textContent=p.name;
   $("avraterow").hidden=me;$("avtolwrap").hidden=me;if(!me)$("avtol").value=String(p.tol||3);
-  {const gg=p.g||"h";document.querySelectorAll("#avgender [data-g]").forEach(b=>b.classList.toggle("on",b.dataset.g===gg));$("avhide").checked=!!p.hr;$("avhp").checked=!!p.hp}
+  {const gg=p.g||"h";document.querySelectorAll("#avgender [data-g]").forEach(b=>b.classList.toggle("on",b.dataset.g===gg));$("avhide").checked=!!p.hr;$("avhp").checked=!!p.hp;const lk=!me&&!!p.mid;$("avhide").disabled=lk;$("avhp").disabled=lk;document.querySelectorAll("#avgender [data-g]").forEach(b=>{b.disabled=lk});$("avlocknote").hidden=!lk}
   if(!me){$("avrate").value=(p.rt??3).toFixed(1);$("avlvl").textContent="Now "+(RT[p.id]??3).toFixed(2)+" · Rank "+tier(RT[p.id]??3)+" · "+level(RT[p.id]??3)}
   $("egrid").innerHTML=EMOJI.map(e=>`<button data-e="${e}" class="${p.av&&p.av.t==="e"&&p.av.v===e?"on":""}">${e}</button>`).join("");
 }
@@ -863,12 +947,12 @@ ${tl?`<div class="pft pfw"><small>Tournament</small><b>${tl}</b></div>`:""}</div
     if(bits.length)extra=`<div class="pfgrid" style="margin-top:8px">${bits.join("")}</div>`;
   }
   $("pfbody").innerHTML=`<div class="pfhead">${av(p,64)}<div style="min-width:0"><div class="pfname">${esc(p.name)}</div><div class="pfg">${gtxt(p.g)}${p.hold?" · on hold":""}</div></div></div>${body}${extra}
-<div class="row" style="justify-content:space-between;flex-wrap:nowrap">${ro?"<span></span>":`<button id="pfhide">${p.hr?"👁 Show rating":"🙈 Hide rating"}</button>`}<span class="row" style="flex-wrap:nowrap">${ro?"":'<button id="pfedit">Edit</button>'}<button class="p" id="pfclose">Done</button></span></div>`;
+<div class="row" style="justify-content:space-between;flex-wrap:nowrap">${ro?"<span></span>":p.mid?'<span class="empty">🔒 Privacy is set by the player</span>':`<button id="pfhide">${p.hr?"👁 Show rating":"🙈 Hide rating"}</button>`}<span class="row" style="flex-wrap:nowrap">${ro?"":'<button id="pfedit">Edit</button>'}<button class="p" id="pfclose">Done</button></span></div>`;
 }
 $("pfmodal").onclick=e=>{
   if(e.target.id==="pfmodal"||e.target.id==="pfclose"){closeProfile();return}
   const p=S.players.find(q=>q.id===PF);if(!p)return;
-  if(e.target.id==="pfhide"){p.hr=!p.hr;save();render();renderProfile()}
+  if(e.target.id==="pfhide"){if(p.mid)return;p.hr=!p.hr;save();render();renderProfile()}
   else if(e.target.id==="pfedit"){const id=PF;closeProfile();openAv(id)}
 };
 document.addEventListener("click",e=>{
@@ -896,10 +980,96 @@ function team(c,s){
   for(let x=a.length;x<n;x++)h+='<div class="pl open">— open slot —</div>';
   return h;
 }
+// ===================== Play tab: compact, colour-coded courts =====================
+// Every court gets a colour and a number that follow it everywhere (header, jump chips). A sticky bar lists all courts
+// with their status so you can jump to one, and holds Undo so it is always in reach.
+const CPAL=["#4da3ff","#4ade80","#ff9f43","#c084fc","#f472b6","#2dd4bf","#fbbf24","#fb7185"];
+const CCOL=i=>CPAL[i%CPAL.length];
+const cstate=c=>isOpen(c)?"open":winner(c)?"done":"play";
+const cstatTxt=c=>isOpen(c)?"Needs players":winner(c)?"Result in":"Playing";
+let CVIEW="all",CSEL=0,CACT=0,FMT_LIVE=null;try{CVIEW=localStorage.getItem("wp-cview")==="one"?"one":"all"}catch(e){}
 function head(c,i){
   const w=!!winner(c);
-  return `<h3><span>Court ${i+1}<small class="rb">· avg ${avgR(c.A).toFixed(1)} vs ${avgR(c.B).toFixed(1)}</small></span><span class="hb"><span class="timer${w?" stopped":""}" data-timer="${i}" title="${w?"Match time":"Match running"}">⏱ ${timerStr(c)}</span>${RM&&RM.host&&playerUids([...c.A,...c.B]).length?`<button class="sk call" data-callc="${i}">📣 Call</button>`:""}${isOpen(c)&&outside().length?`<button class="sk" data-fill="${i}">Fill open slot</button>`:""}</span></h3>`;
+  return `<h3 class="chd"><span class="cbadge" aria-hidden="true">${i+1}</span><span class="ctitle"><b>Court ${i+1}</b><small class="rb">avg ${avgR(c.A).toFixed(1)} vs ${avgR(c.B).toFixed(1)}</small></span><span class="cstat">${cstatTxt(c)}</span><span class="hb"><span class="timer${w?" stopped":""}" data-timer="${i}" title="${w?"Match time":"Match running"}">⏱ ${timerStr(c)}</span>${RM&&RM.host&&playerUids([...c.A,...c.B]).length?`<button class="sk call" data-callc="${i}">📣 Call</button>`:""}${isOpen(c)&&outside().length?`<button class="sk" data-fill="${i}">Fill open slot</button>`:""}</span></h3>`;
 }
+function courtHTML(c,i){
+  const w=winner(c),dis=isOpen(c)?"disabled":"";
+  const nm=ids=>ids.map(id=>{const p=S.players.find(x=>x.id===id);return p?p.name:"?"}).join(" & ");
+  const wbtn=s=>`<button class="twin${w===s?" on":""}" data-w="${s}" data-c="${i}" ${dis} aria-label="Court ${i+1}: ${esc(nm(s==="a"?c.A:c.B))} won">🏆 Winner</button>`;
+  return `<div class="court cs-${cstate(c)}" id="court-${i}" data-ci="${i}" style="--cc:${CCOL(i)}">${head(c,i)}<div class="teams"><div class="team a">${team(c,"A")}${wbtn("a")}</div><div class="vs">vs</div><div class="team b">${team(c,"B")}${wbtn("b")}</div></div><div class="cfoot"><div class="score"><small>Score</small><input type="number" inputmode="numeric" min="0" placeholder="pts" aria-label="Court ${i+1} team A score (optional)" data-c="${i}" data-s="sa" value="${c.sa??""}"><span>–</span><input type="number" inputmode="numeric" min="0" placeholder="pts" aria-label="Court ${i+1} team B score (optional)" data-c="${i}" data-s="sb" value="${c.sb??""}"></div><div class="nextm"><button class="p" data-next="${i}" ${w?"":"disabled"}>${w?"✅ Next match ▶":"Pick a winner"}</button></div></div></div>`;
+}
+const undoReady=()=>{try{return !!(undoOn()&&undoPeek("play"))}catch(e){return false}};
+// jump bar + status summary
+function courtNav(){
+  const nav=$("cnav"),sum=$("rsum");
+  if(!nav)return;
+  if(!S.cur){nav.hidden=true;if(sum)sum.innerHTML="";return}
+  const cs=S.cur.courts,n=cs.length,many=n>1;
+  if(CSEL>=n)CSEL=Math.max(0,n-1);if(CACT>=n)CACT=0;
+  $("cchips").hidden=!many;$("cview").hidden=!many;
+  if(many){
+    $("cchips").innerHTML=cs.map((c,i)=>{
+      const st=cstate(c),on=CVIEW==="one"?i===CSEL:i===CACT;
+      return `<button class="cchip s-${st}${on?" cur":""}" data-goc="${i}" style="--cc:${CCOL(i)}" aria-label="Court ${i+1}: ${cstatTxt(c)}"><b>${i+1}</b><span${st==="play"?` data-ctimer="${i}"`:""}>${st==="play"?timerStr(c):st==="done"?"✓ in":"needs"}</span></button>`;
+    }).join("");
+    const cv=$("cview");cv.textContent=CVIEW==="one"?"◉ One at a time":"☰ All courts";cv.title="Switch between all courts and one court at a time";
+  }
+  const k={play:0,done:0,open:0};cs.forEach(c=>k[cstate(c)]++);
+  if(sum)sum.innerHTML=many?`<span><i class="sd p"></i>${k.play} playing</span><span><i class="sd d"></i>${k.done} result in</span>${k.open?`<span><i class="sd o"></i>${k.open} need players</span>`:""}`:"";
+  nav.hidden=!(many||undoReady());
+}
+function applyCview(){
+  document.querySelectorAll("#courts .court").forEach((el,i)=>{el.hidden=CVIEW==="one"&&i!==CSEL});
+}
+// update one court's card and the bar without redrawing everything (used while typing scores)
+function refreshCourt(i){
+  const c=S.cur&&S.cur.courts[i];if(!c)return;
+  const el=document.getElementById("court-"+i),w=winner(c);
+  if(el){
+    el.classList.remove("cs-play","cs-done","cs-open");el.classList.add("cs-"+cstate(c));
+    el.querySelectorAll("[data-w]").forEach(x=>x.classList.toggle("on",w===x.dataset.w));
+    const nb=el.querySelector("[data-next]");if(nb){nb.disabled=!w;nb.textContent=w?"✅ Next match ▶":"Pick a winner"}
+    const st=el.querySelector(".cstat");if(st)st.textContent=cstatTxt(c);
+    const tw=el.querySelector("[data-timer]");if(tw){tw.textContent="⏱ "+timerStr(c);tw.classList.toggle("stopped",!!w)}
+  }
+  courtNav();
+}
+function goCourt(i){
+  const el=document.getElementById("court-"+i);if(!el)return;
+  CACT=i;CLOCK=Date.now()+800;
+  el.scrollIntoView({behavior:"smooth",block:"start"});
+  el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1400);
+  document.querySelectorAll("#cchips .cchip").forEach((b,j)=>b.classList.toggle("cur",j===i));
+}
+$("cchips").addEventListener("click",e=>{
+  const b=e.target.closest("[data-goc]");if(!b)return;
+  const i=+b.dataset.goc;
+  if(CVIEW==="one"){CSEL=i;applyCview();courtNav();const o=$("out");if(o)o.scrollIntoView({behavior:"smooth",block:"start"})}
+  else goCourt(i);
+});
+$("cview").onclick=()=>{
+  CVIEW=CVIEW==="one"?"all":"one";try{localStorage.setItem("wp-cview",CVIEW)}catch(e){}
+  if(CVIEW==="one")CSEL=CACT;
+  applyCview();courtNav();
+};
+$("cundo").onclick=()=>undoLast("play");
+// which court is at the top of the screen right now (All mode)
+let _cScroll=0,CLOCK=0;
+function trackCourt(){
+  if(Date.now()<CLOCK)return;                          // a chip tap is still scrolling: keep what was tapped
+  if(!S.cur||CVIEW==="one"||S.cur.courts.length<2||$("t-play").hidden)return;
+  const nb=$("cnav").getBoundingClientRect().bottom,lim=window.innerHeight-76,els=[...document.querySelectorAll("#courts .court")];
+  const vis=el=>{const r=el.getBoundingClientRect(),t=Math.max(r.top,nb),bt=Math.min(r.bottom,lim);return r.height?Math.max(0,bt-t)/r.height:0};
+  if(els[CACT]&&vis(els[CACT])>=.6)return;           // keep the current court while it is mostly in view
+  let best=CACT,bv=-1;els.forEach((el,i)=>{const v=vis(el);if(v>bv+.001){bv=v;best=i}});
+  if(best===CACT)return;
+  CACT=best;
+  document.querySelectorAll("#cchips .cchip").forEach((b,i)=>b.classList.toggle("cur",i===CACT));
+  const sb=document.querySelector("#cchips .cur");if(sb&&sb.scrollIntoView)sb.scrollIntoView({inline:"center",block:"nearest"});
+}
+window.addEventListener("scroll",()=>{if(_cScroll)return;_cScroll=requestAnimationFrame(()=>{_cScroll=0;trackCourt()})},{passive:true});
+
+
 function skipPlayer(id){
   if(!S.cur)return;
   const p=S.players.find(x=>x.id===id),c=S.cur.courts.find(x=>x.A.includes(id)||x.B.includes(id));
@@ -992,7 +1162,7 @@ function renderDeck(){
     const q=outside(),c=$("deckcard");c.hidden=false;
     $("deck").innerHTML=q.slice(0,per).map((p,i)=>`<span class="chip on">${av(p,24)}<b>${i+1}</b>&nbsp;${esc(p.name)}</span>`).join("");
     $("deckq").innerHTML=q.length>per?"<strong>Waiting:</strong> "+q.slice(per).map(p=>esc(p.name)).join(", "):(q.length<per?"Need "+(per-q.length)+" more free player"+(per-q.length===1?"":"s")+" for the next match.":"Everyone else is on court.");
-    $("deckhint").textContent="These players take the next court that finishes. Tap Match done on a court to send them in.";
+    $("deckhint").textContent="These players take the next court that finishes. Tap Next match on a court to send them in.";
     return;
   }
   const n=Math.min(S.courts,Math.floor(pool.length/per))*per,c=$("deckcard");
@@ -1011,12 +1181,13 @@ function render(){
   $("chips").innerHTML=S.players.length?S.players.map(p=>`<span class="chip${p.hold?" hold":""}"><button class="avb" data-av="${p.id}" aria-label="Change avatar">${av(p,30)}</button><span class="nm">${esc(p.name)}${gsym(p.g)}</span> <small>${badge(RT[p.id]??3)} ${(RT[p.id]??3).toFixed(1)} · ${p.hold?"on hold":p.played+" played"}</small><button class="h" data-h="${p.id}">${p.hold?"Resume":"Hold"}</button><button class="x" data-r="${p.id}" aria-label="Remove">×</button></span>`).join(""):'<span class="empty">Add the players who showed up.</span>';
   $("m1").className=S.mode===1?"on":"";$("m2").className=S.mode===2?"on":"";
   $("cv").textContent=S.courts;
+  $("fmtsum").textContent=(S.mode===2?"Doubles":"Singles")+" · "+S.courts+" court"+(S.courts===1?"":"s");
+  {const live=!!S.cur;if(live!==FMT_LIVE){$("fmtd").open=!live;FMT_LIVE=live}}
   const o=$("out");
   if(S.cur){
     o.hidden=false;$("rt").textContent="Round "+S.round;
-    const ub=$("undobtn");if(ub){ub.hidden=!LAST_UNDO;if(LAST_UNDO)ub.textContent="↩️ Undo Court "+(LAST_UNDO.i+1)+"'s last match"}
-    $("courts").innerHTML=S.cur.courts.map((c,i)=>`<div class="court">${head(c,i)}<div class="teams"><div class="team a">${team(c,"A")}</div><div class="vs">vs</div><div class="team b">${team(c,"B")}</div></div><div class="wins"><button data-w="a" data-c="${i}" ${isOpen(c)?"disabled":""} class="${winner(c)==='a'?'on':''}">🏆 Winner</button><button data-w="b" data-c="${i}" ${isOpen(c)?"disabled":""} class="${winner(c)==='b'?'on':''}">🏆 Winner</button></div><div class="score"><input type="number" inputmode="numeric" min="0" placeholder="Score (optional)" data-c="${i}" data-s="sa" value="${c.sa??""}"><span>–</span><input type="number" inputmode="numeric" min="0" placeholder="Score (optional)" data-c="${i}" data-s="sb" value="${c.sb??""}"></div><div class="nextm"><button class="p" data-next="${i}" ${winner(c)?"":"disabled"}>✅ Match done · Next match ▶</button>${winner(c)?"":'<small>Pick a winner to free this court</small>'}</div></div>`).join("");
-    decorateCourts();
+    $("courts").innerHTML=S.cur.courts.map((c,i)=>courtHTML(c,i)).join("");
+    decorateCourts();applyCview();courtNav();
     const b=S.cur.bench.filter(id=>S.players.some(p=>p.id===id&&!p.hold));
     $("bench").innerHTML=b.length?"<strong>Sitting out:</strong> "+b.map(sn).join(", "):"Everyone available is playing this round.";
   }else o.hidden=true;
@@ -1046,42 +1217,41 @@ $("courts").oninput=e=>{
   if(valid(c))c.win=c.sa>c.sb?"a":"b";
   syncTimer(c);
   onDecide(c,+t.dataset.c);
-  document.querySelectorAll('[data-w][data-c="'+t.dataset.c+'"]').forEach(x=>x.classList.toggle("on",winner(c)===x.dataset.w));
-  {const nb=document.querySelector('[data-next="'+t.dataset.c+'"]');if(nb){nb.disabled=!winner(c);const h=nb.parentNode.querySelector("small");if(h)h.hidden=!!winner(c)}}
-  {const tw=document.querySelector('[data-timer="'+t.dataset.c+'"]');if(tw){tw.textContent="⏱ "+timerStr(c);tw.classList.toggle("stopped",!!winner(c))}}
+  refreshCourt(+t.dataset.c);
   save();renderRank();
 };
 $("isolist").onclick=e=>{const h=+e.target.dataset.h;if(h)toggleHold(h)};
 $("courts").onclick=e=>{
   const sk=e.target.closest("[data-sk]"),fl=e.target.closest("[data-fill]");
-  if(fl){fill(+fl.dataset.fill);return}
-  const nx=e.target.closest("[data-next]");if(nx){nextMatch(+nx.dataset.next);return}
+  if(fl){ua("play","Fill open slot",()=>fill(+fl.dataset.fill));return}
+  const nx=e.target.closest("[data-next]");if(nx){const i=+nx.dataset.next;ua("play","Court "+(i+1)+" · next match",()=>nextMatch(i));return}
   if(sk){
-    if(sk.dataset.arm){skipPlayer(+sk.dataset.sk);return}
+    if(sk.dataset.arm){ua("play","Skip player",()=>skipPlayer(+sk.dataset.sk));return}
     sk.dataset.arm="1";sk.textContent="Sure?";sk.classList.add("danger");
     setTimeout(()=>{if(sk.isConnected){sk.dataset.arm="";sk.textContent="Skip";sk.classList.remove("danger")}},3000);
     return;
   }
   const b=e.target.closest("[data-w]");if(!b||!S.cur)return;
-  const c=S.cur.courts[+b.dataset.c],w=b.dataset.w;
-  if(winner(c)===w){c.win=null;c.sa=c.sb=null}
-  else{c.win=w;if(valid(c)&&(c.sa>c.sb?"a":"b")!==w)c.sa=c.sb=null}
-  syncTimer(c);
-  onDecide(c,+b.dataset.c);
-  save();render();
+  const ci=+b.dataset.c,c=S.cur.courts[ci],w=b.dataset.w,clearing=winner(c)===w;
+  ua("play","Court "+(ci+1)+" · winner "+(clearing?"cleared":"set"),()=>{
+    if(clearing){c.win=null;c.sa=c.sb=null}
+    else{c.win=w;if(valid(c)&&(c.sa>c.sb?"a":"b")!==w)c.sa=c.sb=null}
+    syncTimer(c);
+    onDecide(c,ci);
+    save();render();
+  });
 };
 $("m1").onclick=()=>{S.mode=1;save();render()};
 $("m2").onclick=()=>{S.mode=2;save();render()};
 $("cm").onclick=()=>{S.courts=Math.max(1,S.courts-1);save();render()};
 $("cp").onclick=()=>{S.courts=Math.min(12,S.courts+1);save();render()};
-$("go").onclick=generate;
-$("undobtn").onclick=undoLastMatch;
+$("go").onclick=()=>ua("play","New round",generate);
 $("egrid").onclick=e=>{const b=e.target.closest("[data-e]"),p=avP();if(!b||!p)return;p.av={t:"e",v:b.dataset.e};commitAv()};
 $("avrate").onchange=()=>{const p=avP();if(!p)return;p.rt=Math.round(clampR(parseFloat($("avrate").value))*100)/100;save();render();renderAv()};
-$("avgender").onclick=e=>{const b=e.target.closest("[data-g]"),p=avP();if(!b||!p)return;p.g=b.dataset.g;commitAv()};
+$("avgender").onclick=e=>{const b=e.target.closest("[data-g]"),p=avP();if(!b||!p||(p.mid&&avId!=="me"))return;p.g=b.dataset.g;commitAv()};
 $("avtol").onchange=()=>{const p=avP();if(!p||avId==="me")return;p.tol=+$("avtol").value;commitAv()};
-$("avhide").onchange=()=>{const p=avP();if(!p)return;p.hr=$("avhide").checked;commitAv()};
-$("avhp").onchange=()=>{const p=avP();if(!p)return;p.hp=$("avhp").checked;commitAv()};
+$("avhide").onchange=()=>{const p=avP();if(!p||(p.mid&&avId!=="me"))return;p.hr=$("avhide").checked;commitAv()};
+$("avhp").onchange=()=>{const p=avP();if(!p||(p.mid&&avId!=="me"))return;p.hp=$("avhp").checked;commitAv()};
 $("rate").oninput=()=>{{const v=clampR(parseFloat($("rate").value));$("lvl").textContent=tier(v)+" · "+level(v)}};
 $("avini").onclick=()=>{const p=avP();if(!p)return;p.av=null;commitAv()};
 $("avup").onclick=()=>$("avfile").click();
@@ -1834,6 +2004,14 @@ $("tourcard").onclick=e=>{
   }
 };
 $("tourcard").oninput=e=>{if(e.target.id==="tname")TS.name=e.target.value};
+{
+  const _tourClick=$("tourcard").onclick;
+  $("tourcard").onclick=function(e){
+    const t=e.target.closest&&e.target.closest("button");
+    const lab=!t?"change":(t.dataset.r!==undefined||t.dataset.oc!==undefined)?"match result":t.id==="nextr"?"next round":t.id==="mkt"?"tournament created":t.id==="rstt"?"tournament reset":"change";
+    return ua("tour","Tourney · "+lab,()=>_tourClick.call(this,e));
+  };
+}
 const FBV="12.19.0";
 const FBC={apiKey:"AIzaSyAzL-UhrKLdfmJoTvwDQ6n3kQa2pVL_6OE",authDomain:"watapickle-matcher.firebaseapp.com",projectId:"watapickle-matcher",storageBucket:"watapickle-matcher.firebasestorage.app",messagingSenderId:"105232671906",appId:"1:105232671906:web:d7e4d0d66c89f6b55de3fb"};
 let FB=null,ME=null,authMode="login";
@@ -1863,7 +2041,7 @@ async function makeProfile(u,name){
 }
 async function loadProfile(u){
   const f=FB,snap=await f.fs.getDoc(f.fs.doc(f.db,"users",u.uid));
-  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo,av:d.avatar||null,rating:d.rating??3,games:d.games||0,hist:[],age:d.age??null,loc:d.loc||"",food:d.food||"",tol:d.tol>=1&&d.tol<=5?d.tol:3,share:!!d.share,resetAt:Number(d.resetAt)||0,dupr:typeof d.dupr==="number"?d.dupr:null,duprId:d.duprId?String(d.duprId):"",duprAt:Number(d.duprAt)||0,duprReq:d.duprReq?String(d.duprReq):""};resetDraft();loadHistory();listenMe();return}
+  if(snap.exists()){const d=snap.data();ME={uid:u.uid,email:u.email,name:d.name,acct:d.accountNo,av:d.avatar||null,rating:d.rating??3,games:d.games||0,hist:[],age:d.age??null,loc:d.loc||"",food:d.food||"",tol:d.tol>=1&&d.tol<=5?d.tol:3,share:!!d.share,resetAt:Number(d.resetAt)||0,dupr:typeof d.dupr==="number"?d.dupr:null,duprId:d.duprId?String(d.duprId):"",duprAt:Number(d.duprAt)||0,duprReq:d.duprReq?String(d.duprReq):""};resetDraft();adoptPref(d);loadHistory();listenMe();return}
   await makeProfile(u,u.displayName||(u.email||"Player").split("@")[0]);
 }
 function openStart(view){
@@ -1982,6 +2160,8 @@ function linkMemberAvatars(){
     if(a&&(!p.av||p.avm)&&JSON.stringify(a)!==JSON.stringify(p.av)){p.av=a;p.avm=1;ch=true}
     else if(!a&&p.avm&&p.av){p.av=null;ch=true}
     if(!!m.hp!==!!p.hp){p.hp=!!m.hp;ch=true}
+    if(m.hr!==undefined&&!!m.hr!==!!p.hr){p.hr=!!m.hr;ch=true}
+    if(m.g!==undefined&&(m.g||"h")!==(p.g||"h")){p.g=m.g||"h";ch=true}
   });
   if(ch){save();render()}
 }
@@ -1989,7 +2169,7 @@ function memberDetails(){
   if(!ME)return {};
   const o={tol:ME.tol||3};
   o.age=ME.share&&ME.age!=null?ME.age:null;o.loc=ME.share?ME.loc||"":"";o.food=ME.share?ME.food||"":"";
-  o.av=memberAv();o.hp=!!mePref().hp;o.dupr=typeof ME.dupr==="number"?ME.dupr:null;
+  o.av=memberAv();o.hp=!!mePref().hp;o.hr=!!mePref().hr;o.g=mePref().g||"h";o.dupr=typeof ME.dupr==="number"?ME.dupr:null;
   return o;
 }
 function syncMember(){
@@ -2016,6 +2196,7 @@ function listenMe(){
     set("duprId",d.duprId?String(d.duprId):"");
     set("duprAt",Number(d.duprAt)||0);
     set("duprReq",d.duprReq?String(d.duprReq):"");
+    if(d.pref&&typeof d.pref==="object"){const lp=mePref();if(!!lp.hr!==!!d.pref.hr||!!lp.hp!==!!d.pref.hp||(lp.g||"h")!==(d.pref.g||"h")){mePref({hr:!!d.pref.hr,hp:!!d.pref.hp,g:d.pref.g||"h"});ch=true}}
     if(!ch)return;
     if(reset){ME.hist=[];loadHistory();toast("Your rating was updated by the admin: "+ME.rating.toFixed(2)+".")}
     try{syncMember();renderAcct();renderHist()}catch(e){}
@@ -2043,6 +2224,13 @@ function duprBlock(){
   if(ME.duprReq)
     return `<h2 style="margin-top:14px">DUPR</h2><div class="empty">Waiting for the admin to verify DUPR ID <b>${esc(ME.duprReq)}</b>. Your official rating will appear here.</div>`;
   return `<h2 style="margin-top:14px">DUPR</h2><div class="empty">No DUPR linked yet. Add your DUPR ID in Settings ⚙️ and the admin will verify it.</div>`;
+}
+function privCard(){
+  const pr=mePref();
+  return `<div class="card"><h2 style="margin-top:0">Privacy</h2>
+<label class="tgl row" style="margin:0 0 8px;flex-wrap:nowrap;gap:10px"><input type="checkbox" id="prvhr" ${pr.hr?"checked":""}><span>Hide my rating, stats and details from other players</span></label>
+<label class="tgl row" style="margin:0 0 8px;flex-wrap:nowrap;gap:10px"><input type="checkbox" id="prvhp" ${pr.hp?"checked":""}><span>Hide my photo (others see my emoji or initials)</span></label>
+<div class="empty">Only you can change these. Hosts and other players cannot turn them on or off for you. Hiding yours never stops you from seeing other players' profiles that are not hidden.</div></div>`;
 }
 function duprCard(){
   if(typeof ME.dupr==="number")return `<div class="card"><h2 style="margin-top:0">DUPR</h2><div class="empty">Your official DUPR (${ME.dupr.toFixed(3)}) comes from DUPR and is managed by the admin. It cannot be edited here.</div></div>`;
@@ -2090,7 +2278,7 @@ function renderSettings(force){
 <div class="row" style="flex-wrap:nowrap;gap:14px"><button class="avb" id="myav" aria-label="Change avatar">${av({name:ME.name,av:ME.av},76)}</button><div style="min-width:0"><div style="font-weight:800;overflow:hidden;text-overflow:ellipsis">${esc(ME.name)}</div><div class="empty" style="overflow:hidden;text-overflow:ellipsis">${esc(ME.email)}</div><div class="empty">WP-${esc(ME.acct)}</div></div></div>
 <div class="empty" style="margin-top:6px">Tap your avatar to change it.</div>
 ${g===0?`<div class="row" style="margin-top:12px"><label for="myrate">Starting level</label><input id="myrate" type="number" inputmode="decimal" step="0.1" min="2" max="8" value="${lv.toFixed(1)}" style="flex:0 0 90px"></div><div class="empty" style="margin-top:6px">Set this before your first open play. After that your rating updates by itself.</div>`:`<div class="empty" style="margin-top:8px">Your rating (${lv.toFixed(2)}) updates by itself after every open play you finish.</div>`}</div>
-<div class="card">${detailsHtml()}</div>${duprCard()}`;
+<div class="card">${detailsHtml()}</div>${duprCard()}${privCard()}`;
   }else if(S.net==="online"){
     h+=`<div class="card"><h2 style="margin-top:0">My account</h2><div class="empty">Online mode is on, but you are not signed in.</div><div class="row" style="margin-top:10px"><button class="p" id="signin">Log in / Sign up</button></div></div>`;
   }else{
@@ -2238,7 +2426,7 @@ $("roomcard").onclick=async e=>{
     if(!m)return;
     if(S.players.some(p=>p.mid===m.uid)){toast(m.name+" is already a player.");return}
     const act=S.players.filter(p=>!p.hold),min=act.length?Math.min(...act.map(p=>p.played)):0;
-    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:m.rating??3,gm:m.games||0,rs:m.rs||0,av:m.av||null,avm:m.av?1:0,hp:!!m.hp,mid:m.uid,tol:m.tol>=1&&m.tol<=5?m.tol:3});
+    S.players.push({id:S.uid++,name:m.name,played:min,sat:0,hold:false,r:Math.random(),rt:m.rating??3,gm:m.games||0,rs:m.rs||0,av:m.av||null,avm:m.av?1:0,hp:!!m.hp,hr:!!m.hr,g:m.g||"h",mid:m.uid,tol:m.tol>=1&&m.tol<=5?m.tol:3});
     save();render();toast(m.name+" added to players.");
   }
 };
@@ -2850,27 +3038,31 @@ function onDecide(c,i){
 function meId(){const p=ME&&S.players.find(x=>x.mid===ME.uid);return p?p.id:null}
 function decorateCourts(){
   if(!S.cur)return;
-  const led=CL().g,els=document.querySelectorAll("#courts .court"),host=!RM||RM.host,me=meId(),rv=rivalries(led,3);
+  const led=CL().g,els=document.querySelectorAll("#courts .court"),host=!RM||RM.host,me=meId(),rv=rivalries(led,3),many=S.cur.courts.length>1;
   S.cur.courts.forEach((c,i)=>{
-    const el=els[i];if(!el)return;let h="";
+    const el=els[i];if(!el)return;
+    const notes=[];let acts="";
     [c.A,c.B].forEach(t=>{
       if(t.length!==2)return;
       const x=keyId(t[0]),y=keyId(t[1]);if(!x||!y)return;
       const q=chem(led,x,y);
-      if(!q.g)h+=`<div class="cl-note ft">👋 <b>FIRST TIME</b>: ${names(t)} have never played together. Good chance to build chemistry!</div>`;
-      else if(q.g>=3)h+=`<div class="cl-note">🤝 ${names(t)}: chemistry <b>${q.score}%</b> · ${q.g} games together</div>`;
+      if(!q.g)notes.push(`<div class="cl-note ft">👋 <b>FIRST TIME</b>: ${names(t)} have never played together. Good chance to build chemistry!</div>`);
+      else if(q.g>=3)notes.push(`<div class="cl-note">🤝 ${names(t)}: chemistry <b>${q.score}%</b> · ${q.g} games together</div>`);
     });
     if(c.A.length===1&&c.B.length===1){
       const x=keyId(c.A[0]),y=keyId(c.B[0]);
-      if(x&&y&&!led.some(r=>(r.A.includes(x)&&r.B.includes(y))||(r.A.includes(y)&&r.B.includes(x))))h+=`<div class="cl-note ft">👋 <b>FIRST TIME</b>: ${names([c.A[0]])} and ${names([c.B[0]])} have never played each other.</div>`;
+      if(x&&y&&!led.some(r=>(r.A.includes(x)&&r.B.includes(y))||(r.A.includes(y)&&r.B.includes(x))))notes.push(`<div class="cl-note ft">👋 <b>FIRST TIME</b>: ${names([c.A[0]])} and ${names([c.B[0]])} have never played each other.</div>`);
     }
     const ka=c.A.map(keyId),kb=c.B.map(keyId);
     const hit=rv.find(r=>(ka.includes(r.a)&&kb.includes(r.b))||(ka.includes(r.b)&&kb.includes(r.a)));
-    if(hit)h+=rivalHTML(hit);
+    if(hit)notes.push(rivalHTML(hit));
     if(winner(c)){
-      if(host)h+=`<div class="cl-mood"><small>How did that game go?</small><div>${MOODS.map((m,k)=>`<button data-mo="${k}" data-c="${i}" class="${c.mo===k?"on":""}">${m[0]}<span>${m[1]}</span></button>`).join("")}</div></div>`;
-      if(me&&(c.A.includes(me)||c.B.includes(me)))h+=`<button class="keep cl-rate" data-rate="${i}">⭐ Rate your experience</button>`;
+      if(host)acts+=`<div class="cl-mood"><small>How was it?</small><div>${MOODS.map((m,k)=>`<button data-mo="${k}" data-c="${i}" class="${c.mo===k?"on":""}" title="${m[1]}" aria-label="${m[1]}">${m[0]}<span>${m[1]}</span></button>`).join("")}</div></div>`;
+      if(me&&(c.A.includes(me)||c.B.includes(me)))acts+=`<button class="keep cl-rate" data-rate="${i}">⭐ Rate your experience</button>`;
     }
+    // match notes sit in a fold-out so many courts stay short; with a single court they start open
+    let h=notes.length?`<details class="cl-more"${many?"":" open"}><summary>💬 Match notes <b>${notes.length}</b></summary>${notes.join("")}</details>`:"";
+    h+=acts;
     if(h){const d=document.createElement("div");d.className="cl-extra";d.innerHTML=h;el.appendChild(d)}
   });
 }
@@ -3248,6 +3440,12 @@ const acctInput=e=>{
 };
 const acctChange=async e=>{
   const id=e.target.id;
+  if((id==="prvhr"||id==="prvhp")&&ME){
+    mePref(id==="prvhr"?{hr:e.target.checked}:{hp:e.target.checked});
+    await saveProfile();syncMember();renderAcct();
+    toast(e.target.checked?"Hidden from other players.":"Visible to other players.");
+    return;
+  }
   if(id==="myrate"){
     if(!ME||ME.games!==0||!FB)return;
     const v=Math.round(clampR(parseFloat(e.target.value))*100)/100;
@@ -3278,6 +3476,75 @@ $("aforgot").onclick=async()=>{
   }catch(e){err.textContent=fbErr(e)}
 };
 $("apass").onkeydown=e=>{if(e.key==="Enter")submitAuth()};
+
+/* ---------- Undo for match submissions (host only) ----------
+   Each time the host submits or changes a match, the state before it is remembered.
+   Undo restores it: court players, results, round number, counters, and the club ledger that follows from them.
+   Ending the open play is NOT undoable (it saves ratings to accounts). */
+const UNDO={play:[],tour:[]},UMAX=8;
+const snapPlay=()=>JSON.stringify({cur:S.cur,hist:S.hist,partner:S.partner,opp:S.opp,round:S.round,sid:S.sid,sk:S.sk,club:S.club,feed:S.feed,pl:S.players.map(p=>[p.id,p.played,p.sat,p.hold,p.skip,p.r])});
+const snapTour=()=>JSON.stringify({tour:S.tour,club:S.club,feed:S.feed});
+const undoOn=()=>!RM||RM.host;
+function ua(scope,label,fn){
+  if(!undoOn())return fn();
+  const snap=scope==="play"?snapPlay:snapTour,own=S,before=snap(),r=fn();
+  if(S===own){
+    const after=snap();
+    if(after!==before){const st=UNDO[scope];st.push({label,data:before,at:Date.now(),S:own});if(st.length>UMAX)st.shift();renderUndo();undoShow(scope)}
+  }
+  return r;
+}
+function undoPeek(scope){const st=UNDO[scope];while(st.length&&st[st.length-1].S!==S)st.pop();return st[st.length-1]||null}
+function undoLast(scope){
+  if(!undoOn())return;
+  const u=undoPeek(scope);
+  if(!u){toast("Nothing to undo");renderUndo();return}
+  UNDO[scope].pop();
+  const d=JSON.parse(u.data);
+  if(scope==="play"){
+    S.cur=d.cur;S.hist=d.hist;S.partner=d.partner;S.opp=d.opp;S.round=d.round;S.sid=d.sid;S.sk=d.sk;S.club=d.club;S.feed=d.feed;
+    (d.pl||[]).forEach(a=>{const p=S.players.find(x=>x.id===a[0]);if(!p)return;p.played=a[1];p.sat=a[2];p.hold=a[3];if(a[4]===undefined||a[4]===null)delete p.skip;else p.skip=a[4];p.r=a[5]});
+  }else{S.tour=d.tour;S.club=d.club;S.feed=d.feed}
+  $("undobar").hidden=true;
+  save();render();
+  toast("↩ Undone: "+u.label);
+}
+function undoShow(scope){
+  const u=undoPeek(scope),bar=$("undobar");if(!u||!bar)return;
+  bar.dataset.scope=scope;$("undotxt").textContent=u.label;bar.hidden=false;
+  clearTimeout(undoShow.t);undoShow.t=setTimeout(()=>{bar.hidden=true},10000);
+}
+function renderUndo(){
+  if(S.ended||(S.round===0&&!S.cur))UNDO.play.length=0;
+  const ok=undoOn(),pu=ok?undoPeek("play"):null,tu=ok?undoPeek("tour"):null;
+  {const cu=$("cundo");if(cu){cu.hidden=!pu;if(pu)cu.title="Undo: "+pu.label}const nv=$("cnav");if(nv&&S.cur)nv.hidden=!(pu||S.cur.courts.length>1)}
+  $("tundorow").hidden=!tu;if(tu)$("tundobtn").textContent="↩ Undo: "+tu.label;
+  if(!pu&&!tu)$("undobar").hidden=true;
+}
+const _renderU=render;
+render=function(){const r=_renderU.apply(this,arguments);try{renderUndo()}catch(e){}return r};
+$("undogo").onclick=()=>undoLast($("undobar").dataset.scope||"play");
+$("undox").onclick=()=>{$("undobar").hidden=true};
+$("tundobtn").onclick=()=>undoLast("tour");
+document.addEventListener("keydown",e=>{
+  if(!(e.ctrlKey||e.metaKey)||String(e.key).toLowerCase()!=="z"||e.shiftKey)return;
+  const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+  if(S.tab==="play"||S.tab==="tour"){e.preventDefault();undoLast(S.tab==="tour"?"tour":"play")}
+});
+/* Privacy belongs to the player: for account-linked players the app always shows what THEY chose (their member record),
+   whatever the host's list says. Hosts and other players have no switch for it. */
+function applyMemberPrivacy(){
+  if(!RM)return;
+  S.players.forEach(p=>{
+    if(!p.mid)return;
+    const m=RM.members.find(x=>x.uid===p.mid);if(!m)return;
+    if(m.hr!==undefined)p.hr=!!m.hr;
+    if(m.hp!==undefined)p.hp=!!m.hp;
+    if(m.g!==undefined)p.g=m.g||"h";
+  });
+}
+const _renderP=render;
+render=function(){try{applyMemberPrivacy()}catch(e){}return _renderP.apply(this,arguments)};
 document.querySelector(".slogo").src=document.querySelector(".logo").src;
 render();
 showTab(S.tab||"players");
